@@ -1,14 +1,12 @@
-name: NEXUS - Merge Project and Build APK
+name: NEXUS - Auto Detect and Build APK
 
 'on':
   workflow_dispatch:
-    inputs:
-      update_zip:
-        description: Select NEXUS update package
-        required: true
-        type: choice
-        options:
-          - NEXUS-1.0.3-dark-mode-splash-fix.zip
+  push:
+    branches:
+      - main
+    paths:
+      - '*.zip'
 
 permissions:
   contents: write
@@ -18,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  merge-build:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,32 +25,56 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract NEXUS 1.0.3
+      - name: Find newest NEXUS ZIP
+        id: package
         shell: bash
-        env:
-          ZIP_FILE: ${{ inputs.update_zip }}
         run: |
           set -euo pipefail
 
-          test -f "$ZIP_FILE"
+          ZIP_FILE=$(
+            find . -maxdepth 1 -type f -name 'NEXUS-*.zip' \
+              ! -name '*auto-build.zip' \
+              -printf '%T@ %f\n' |
+            sort -rn |
+            head -1 |
+            cut -d' ' -f2-
+          )
 
-          mkdir -p /tmp/nexus-merged
-          unzip -q -o "$ZIP_FILE" -d /tmp/nexus-merged
+          if [[ -z "$ZIP_FILE" ]]; then
+            echo "No NEXUS ZIP found."
+            exit 1
+          fi
+
+          echo "zip=$ZIP_FILE" >> "$GITHUB_OUTPUT"
+          echo "Selected: $ZIP_FILE"
+
+      - name: Extract NEXUS project
+        env:
+          ZIP_FILE: ${{ steps.package.outputs.zip }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/nexus-package
+          unzip -q -o "$ZIP_FILE" -d /tmp/nexus-package
 
           SOURCE_DIR=""
 
           while IFS= read -r dir; do
-            if [[ -f "$dir/package.json" ]] && \
-               [[ -f "$dir/settings.gradle" ]] && \
-               [[ -f "$dir/app/build.gradle" ]] && \
-               [[ -f "$dir/app/src/main/assets/public/index.html" ]]; then
+            if [[ -f "$dir/package.json" ]] &&
+               [[ -f "$dir/settings.gradle" ]] &&
+               [[ -f "$dir/app/build.gradle" ]] &&
+               [[ -d "$dir/app/src/main" ]]; then
               SOURCE_DIR="$dir"
               break
             fi
-          done < <(find /tmp/nexus-merged -type f -name package.json -printf '%h\n')
+          done < <(
+            find /tmp/nexus-package \
+              -type f -name package.json -printf '%h\n'
+          )
 
           if [[ -z "$SOURCE_DIR" ]]; then
-            echo "ERROR: NEXUS Android project not found."
+            echo "NEXUS Android project not found."
             exit 1
           fi
 
@@ -61,33 +83,51 @@ jobs:
             --exclude='.github/' \
             "$SOURCE_DIR/" ./
 
-      - name: Verify version and features
+      - name: Verify project version
+        id: version
+        shell: bash
         run: |
           set -euo pipefail
 
-          node -e "
-          const p=require('./package.json');
-          if(p.version !== '1.0.3') {
-            throw new Error('Wrong package version: '+p.version);
-          }
-          "
+          VERSION=$(node -p "require('./package.json').version")
 
-          grep -q 'versionCode 4' app/build.gradle
-          grep -q 'versionName "1.0.3"' app/build.gradle
-          grep -q 'nexus-theme-mode' app/src/main/assets/public/index.html
-          grep -q 'splash-dot' app/src/main/assets/public/index.html
+          CODE=$(
+            grep -oE 'versionCode[[:space:]]+[0-9]+' \
+              app/build.gradle |
+            head -1 |
+            grep -oE '[0-9]+'
+          )
 
-          echo "NEXUS 1.0.3 verification passed."
+          NAME=$(
+            grep -oE "versionName[[:space:]]*[\"'][^\"']+[\"']" \
+              app/build.gradle |
+            head -1 |
+            sed -E "s/.*[\"']([^\"']+)[\"']/\1/"
+          )
+
+          if [[ "$VERSION" != "$NAME" ]]; then
+            echo "Version mismatch!"
+            echo "Package: $VERSION"
+            echo "Android: $NAME"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+          echo "NEXUS version: $VERSION"
+          echo "Version code: $CODE"
 
       - name: Save merged project
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add -A
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update NEXUS to 1.0.3"
+            git commit -m "Update NEXUS ${{ steps.version.outputs.version }}"
             git push
           fi
 
@@ -102,7 +142,7 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -110,7 +150,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build web project
+      - name: Verify web project
         run: npm run build
 
       - name: Build Android APK
@@ -124,7 +164,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-1.0.3-debug-apk
+          name: NEXUS-${{ steps.version.outputs.version }}-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
