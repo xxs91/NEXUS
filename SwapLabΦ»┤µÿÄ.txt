@@ -1,0 +1,1 @@
+SwapLab 上传说明：上传整个 NEXUS_完整版.zip，选择“调试安装包”。包内已包含 dist/index.html 与 capacitor.config.json。若平台仍提示缺少 dist，请选择“导出 Android Studio”或联系平台确认其要求的目录结构，不要重复购买或付款。

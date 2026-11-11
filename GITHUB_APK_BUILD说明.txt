@@ -1,0 +1,19 @@
+NEXUS GitHub APK 构建包
+
+上传方式：
+1. 解压本 ZIP。
+2. 打开 GitHub 的 NEXUS 仓库首页。
+3. 选择 Add file（添加文件）-> Upload files（上传文件）。
+4. 将解压后的所有文件和文件夹上传到仓库根目录。
+   注意：必须包含隐藏目录 .github/workflows/android-apk.yml。
+5. 提交到 main 分支。
+6. 打开 Actions，等待 Build NEXUS Android APK 完成。
+7. 成功后进入该次运行页面，在 Artifacts 下载 NEXUS-debug-apk.zip。
+8. 解压后安装 app-debug.apk。
+
+说明：
+- 此包基于用户提供的 NEXUS_Capacitor8_SwapLab版.zip。
+- 已添加 GitHub Actions 自动构建配置。
+- 现有 Android 工程使用仓库根目录的 Gradle 项目结构，因此工作流直接执行 gradle assembleDebug，不再运行 cap add 或 cap sync。
+- 当前工作流尚未在用户仓库实际运行验证；若失败，需根据 Actions 日志继续修正。
+- 此 ZIP 未包含 GitLab 仓库中的 App.tsx/main.tsx/supabase.ts 等源代码（原 ZIP 本身不含这些文件），请勿将其误认为完整 React 源码工程。

@@ -1,0 +1,11 @@
+NEXUS 本次更新说明
+
+1. 主界面三字标语已更新为：稳定 · 高速 · 安全。
+2. Android 桌面启动图标资源已加入 android/app/src/main/res：
+   - mipmap-mdpi / hdpi / xhdpi / xxhdpi / xxxhdpi
+   - mipmap-anydpi-v26 自适应图标 XML
+   - 白色背景 + 黑色 N 前景
+3. Capacitor 图标源文件：resources/icon.png、assets/icon.png（1024×1024）。
+
+注意：重新构建 APK 时，打包服务必须使用本包内的 Android 原生资源目录；若服务会重新生成 android 工程并丢弃该目录，则需在生成工程后执行 npx capacitor-assets generate --android，或在 Android Studio 工程中保留本包的 mipmap 资源。旧 APK 不会自动更新图标。
+本 ZIP 是项目包，不是已经编译验证的 APK。
