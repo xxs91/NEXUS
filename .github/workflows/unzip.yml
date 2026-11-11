@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract NEXUS update package
         run: |
@@ -25,30 +27,44 @@ jobs:
 
           ZIP_FILE="NEXUS_A方案连接主页更新包.zip"
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "找不到更新包：$ZIP_FILE"
-            exit 1
+          if [ -f "$ZIP_FILE" ]; then
+            echo "发现更新包，开始解压"
+
+            mkdir -p /tmp/nexus_update
+            unzip -q "$ZIP_FILE" -d /tmp/nexus_update
+
+            if [ ! -d "/tmp/nexus_update/nexus_work" ]; then
+              echo "错误：没有找到 nexus_work 文件夹"
+              exit 1
+            fi
+
+            rsync -a --exclude='.github/workflows/' \
+              /tmp/nexus_update/nexus_work/ ./
+
+            rm -f "$ZIP_FILE"
+
+            echo "更新包解压成功"
+          else
+            echo "没有发现 ZIP，直接使用现有项目源码构建"
           fi
-
-          mkdir -p /tmp/nexus_update
-          unzip -q "$ZIP_FILE" -d /tmp/nexus_update
-
-          if [ ! -d "/tmp/nexus_update/nexus_work" ]; then
-            echo "没有找到 nexus_work 文件夹"
-            exit 1
-          fi
-
-          rsync -a --exclude='.github/workflows/' \
-            /tmp/nexus_update/nexus_work/ ./
-
-          rm -f "$ZIP_FILE"
 
       - name: Save updated project
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+
           if ! git diff --cached --quiet; then
             git commit -m "Update NEXUS connection homepage"
             git push
+          else
+            echo "没有需要提交的新文件"
           fi
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
