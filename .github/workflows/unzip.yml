@@ -33,19 +33,14 @@ jobs:
           ZIP_FILE: ${{ inputs.update_zip }}
         run: |
           set -euo pipefail
-
-          if [[ ! -f "$ZIP_FILE" ]]; then
-            echo "ERROR: ZIP file not found: $ZIP_FILE"
-            exit 1
-          fi
-
+          test -f "$ZIP_FILE"
           mkdir -p /tmp/nexus-merged
           unzip -q -o "$ZIP_FILE" -d /tmp/nexus-merged
 
           SOURCE_DIR=""
-
           while IFS= read -r dir; do
             if [[ -f "$dir/package.json" ]] && \
+               [[ -f "$dir/capacitor.config.json" ]] && \
                [[ -f "$dir/settings.gradle" ]] && \
                [[ -d "$dir/app" ]]; then
               SOURCE_DIR="$dir"
@@ -54,73 +49,56 @@ jobs:
           done < <(find /tmp/nexus-merged -type f -name package.json -printf '%h\n')
 
           if [[ -z "$SOURCE_DIR" ]]; then
-            echo "ERROR: Complete Android project not found."
+            echo "ERROR: Complete NEXUS project not found in ZIP."
             find /tmp/nexus-merged -maxdepth 4 -type f | head -100
             exit 1
           fi
-
-          echo "Project found: $SOURCE_DIR"
 
           rsync -a \
             --exclude='.git/' \
             --exclude='.github/' \
             "$SOURCE_DIR/" ./
 
-      - name: Check Android configuration
-        shell: bash
+      - name: Check project configuration
         run: |
           set -euo pipefail
+          node -e "
+          const p = require('./package.json');
+          if (!p.dependencies?.['@capacitor/core']) throw new Error('Missing Capacitor Core');
+          if (!p.dependencies?.['@capacitor/android']) throw new Error('Missing Capacitor Android');
+          "
+          test -f capacitor.config.json
+          test -d dist
 
-          sed -i \
-            's/RepositoriesMode\.FAIL_ON_PROJECT_REPOS/RepositoriesMode.PREFER_PROJECT/g' \
-            settings.gradle
-
-          if ! grep -q 'androidx.appcompat:appcompat' app/build.gradle; then
-            sed -i \
-              "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" \
-              app/build.gradle
-          fi
-
-      - name: Update version
-        shell: bash
+      - name: Update project version
         run: |
-          set -euo pipefail
-
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, json
 
           p = Path("app/build.gradle")
           s = p.read_text()
-
           s, n1 = re.subn(r'versionCode\s+\d+', 'versionCode 3', s, count=1)
           s, n2 = re.subn(r"""versionName\s+['"][^'"]+['"]""", 'versionName "1.0.2"', s, count=1)
 
           if n1 != 1 or n2 != 1:
-              raise SystemExit("Could not safely update Android version.")
+              raise SystemExit("Could not update Android version.")
 
           p.write_text(s)
+
+          package = Path("package.json")
+          data = json.loads(package.read_text())
+          data["version"] = "1.0.2"
+          package.write_text(json.dumps(data, indent=2) + "\n")
           PY
 
-          node -e "
-            const fs = require('fs');
-            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            p.version = '1.0.2';
-            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
-          "
-
       - name: Save merged project
-        shell: bash
         run: |
-          set -euo pipefail
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add -A
-
           if ! git diff --cached --quiet; then
-            git commit -m "Integrate NEXUS 1.0.2 merged project"
+            git commit -m "Integrate NEXUS 1.0.2 project"
             git push
           fi
 
@@ -146,16 +124,42 @@ jobs:
       - name: Build web project
         run: npm run build
 
-      - name: Sync Capacitor Android
-        run: npx cap sync android
+      - name: Add Android platform and sync
+        run: |
+          set -euo pipefail
+          if [[ ! -f android/capacitor.settings.gradle ]]; then
+            rm -rf android
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Set Android app version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          s, n1 = re.subn(r'versionCode\s+\d+', 'versionCode 3', s, count=1)
+          s, n2 = re.subn(r"""versionName\s+['"][^'"]+['"]""", 'versionName "1.0.2"', s, count=1)
+
+          if n1 != 1 or n2 != 1:
+              raise SystemExit("Could not update generated Android version.")
+
+          p.write_text(s)
+          PY
 
       - name: Build Android APK
-        run: gradle assembleDebug
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-1.0.2-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
