@@ -1,190 +1,168 @@
-name: NEXUS - Auto Extract and Build APK
+name: NEXUS - Merge Project and Build APK
 
 on:
-  workflow_dispatch:
-
-  push:
-    branches:
-      - main
-    paths:
-      - '*.zip'
+workflow_dispatch:
+inputs:
+update_zip:
+description: "选择要导入的更新包"
+required: true
+type: choice
+options:
+- NEXUS-1.0.1-merged.zip
 
 permissions:
-  contents: write
+contents: write
 
 concurrency:
-  group: nexus-apk-build
-  cancel-in-progress: false
+group: nexus-apk-build
+cancel-in-progress: false
 
 jobs:
-  extract-build:
-    runs-on: ubuntu-latest
+merge-build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
 
-      # 只处理本次提交新增或修改的 ZIP
-      # 手动运行时不扫描历史 ZIP
-      - name: Detect newly uploaded ZIP
-        id: detect
-        shell: bash
-        run: |
-          set -euo pipefail
+  - name: Extract merged project
+    shell: bash
+    env:
+      ZIP_FILE: ${{ inputs.update_zip }}
+    run: |
+      set -euo pipefail
 
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "手动启动：直接使用当前项目源码构建。"
-            exit 0
-          fi
+      if [[ ! -f "$ZIP_FILE" ]]; then
+        echo "错误：找不到合并包 $ZIP_FILE"
+        exit 1
+      fi
 
-          BEFORE="${{ github.event.before }}"
-          AFTER="${{ github.sha }}"
+      mkdir -p /tmp/nexus-merged
 
-          if [[ "$BEFORE" =~ ^0+$ ]]; then
-            BEFORE="$(git rev-parse "${AFTER}^" 2>/dev/null || true)"
-          fi
+      unzip -q -o "$ZIP_FILE" -d /tmp/nexus-merged
 
-          if [[ -z "$BEFORE" ]]; then
-            echo "无法确定本次提交的变更范围。"
-            exit 1
-          fi
+      SOURCE_DIR="/tmp/nexus-merged/NEXUS-main"
 
-          mapfile -t ZIP_FILES < <(
-            git diff --name-only "$BEFORE" "$AFTER" \
-              | grep -Ei '^[^/]+\.zip$' || true
-          )
+      if [[ ! -f "$SOURCE_DIR/package.json" ]] || \
+         [[ ! -f "$SOURCE_DIR/settings.gradle" ]] || \
+         [[ ! -d "$SOURCE_DIR/app" ]]; then
+        echo "错误：合并包不是完整的 Android 项目。"
+        exit 1
+      fi
 
-          if [[ ${#ZIP_FILES[@]} -eq 0 ]]; then
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "本次没有上传 ZIP，使用现有源码构建。"
-            exit 0
-          fi
+      echo "确认合并包项目结构成功。"
 
-          if [[ ${#ZIP_FILES[@]} -gt 1 ]]; then
-            echo "本次上传了多个 ZIP，请一次上传一个更新包。"
-            printf '%s\n' "${ZIP_FILES[@]}"
-            exit 1
-          fi
+      # 导入项目文件，但保护 GitHub 工作流
+      rsync -a \
+        --exclude='.git/' \
+        --exclude='.github/' \
+        "$SOURCE_DIR/" ./
 
-          echo "found=true" >> "$GITHUB_OUTPUT"
-          echo "zip_file=${ZIP_FILES[0]}" >> "$GITHUB_OUTPUT"
+      echo "合并包源码导入完成。"
 
-          echo "本次更新包：${ZIP_FILES[0]}"
+  - name: Synchronize UI entry files
+    shell: bash
+    run: |
+      set -euo pipefail
 
-      # 自动解压并识别项目目录
-      - name: Extract NEXUS update
-        if: steps.detect.outputs.found == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
+      mkdir -p dist app/src/main/assets/public
 
-          ZIP_FILE="${{ steps.detect.outputs.zip_file }}"
+      cp index.html dist/index.html
+      cp index.html app/src/main/assets/public/index.html
 
-          mkdir -p /tmp/nexus-package
-          unzip -q -o "$ZIP_FILE" -d /tmp/nexus-package
+      echo "三个网页入口已同步。"
 
-          SOURCE_DIR=""
+  - name: Update version to 1.0.2
+    shell: bash
+    run: |
+      set -euo pipefail
 
-          while IFS= read -r dir; do
-            if [[ -f "$dir/package.json" ]] && \
-               [[ -f "$dir/settings.gradle" ]] && \
-               [[ -d "$dir/app" ]]; then
-              SOURCE_DIR="$dir"
-              break
-            fi
-          done < <(
-            find /tmp/nexus-package \
-              -type f -name package.json -printf '%h\n'
-          )
+      sed -i \
+        "s/versionCode 2/versionCode 3/" \
+        app/build.gradle
 
-          if [[ -z "$SOURCE_DIR" ]]; then
-            echo "错误：没有找到有效的 NEXUS Android 项目。"
-            find /tmp/nexus-package -maxdepth 4 -type f | head -100
-            exit 1
-          fi
+      sed -i \
+        "s/versionName '1.0.1'/versionName '1.0.2'/" \
+        app/build.gradle
 
-          echo "识别到项目目录：$SOURCE_DIR"
+      node -e "
+        const fs = require('fs');
+        const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+        p.version = '1.0.2';
+        fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+      "
 
-          rsync -a --delete \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            "$SOURCE_DIR/" ./
+      grep -q 'versionCode 3' app/build.gradle
+      grep -q "versionName '1.0.2'" app/build.gradle
 
-          rm -f "$ZIP_FILE"
+      echo "版本号已更新为 1.0.2，versionCode 3。"
 
-      # 处理之前遇到的已知构建配置问题
-      - name: Check Android build configuration
-        shell: bash
-        run: |
-          set -euo pipefail
+  - name: Check Android configuration
+    shell: bash
+    run: |
+      set -euo pipefail
 
-          if [[ -f settings.gradle ]]; then
-            sed -i \
-              's/RepositoriesMode\.FAIL_ON_PROJECT_REPOS/RepositoriesMode.PREFER_PROJECT/g' \
-              settings.gradle
-          fi
+      sed -i \
+        's/RepositoriesMode\.FAIL_ON_PROJECT_REPOS/RepositoriesMode.PREFER_PROJECT/g' \
+        settings.gradle
 
-          if [[ -f app/build.gradle ]] && \
-             grep -q 'dependencies[[:space:]]*{' app/build.gradle && \
-             ! grep -q 'androidx.appcompat:appcompat' app/build.gradle; then
+      if ! grep -q 'androidx.appcompat:appcompat' app/build.gradle; then
+        sed -i \
+          "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" \
+          app/build.gradle
+      fi
 
-            sed -i \
-              "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" \
-              app/build.gradle
-          fi
+  - name: Save merged project
+    shell: bash
+    run: |
+      set -euo pipefail
 
-          echo "Android 配置检查完成。"
+      git config user.name "github-actions[bot]"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # 只有文件发生变化才提交
-      - name: Save updated project
-        shell: bash
-        run: |
-          set -euo pipefail
+      git add -A
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      if ! git diff --cached --quiet; then
+        git commit -m "Integrate NEXUS 1.0.2 merged project"
+        git push
+      else
+        echo "没有新的文件需要提交。"
+      fi
 
-          git add -A
+  - name: Set up Java 21
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: "21"
 
-          if ! git diff --cached --quiet; then
-            git commit -m "Update NEXUS project"
-            git push
-          else
-            echo "没有需要提交的项目变化。"
-          fi
+  - name: Set up Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: "8.14.3"
 
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
+  - name: Set up Node.js 22
+    uses: actions/setup-node@v4
+    with:
+      node-version: "22"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.14.3"
+  - name: Install dependencies
+    run: npm install
 
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+  - name: Build web project
+    run: npm run build
 
-      - name: Install dependencies
-        run: npm install
+  - name: Sync Capacitor Android assets
+    run: npx cap sync android
 
-      - name: Build web project
-        run: npm run build
+  - name: Build Android APK
+    run: gradle assembleDebug
 
-      - name: Build Android APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NEXUS-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: NEXUS-1.0.2-debug-apk
+      path: app/build/outputs/apk/debug/app-debug.apk
+      if-no-files-found: error
+      retention-days: 14
