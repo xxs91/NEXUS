@@ -20,7 +20,68 @@ body{padding-bottom:86px}.mainScreen{min-height:60vh}.screen-heading{padding:14p
 .bottom-nav{position:fixed;z-index:9000;left:0;right:0;bottom:0;padding:9px max(18px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:#ffffffed;backdrop-filter:blur(18px);border-top:1px solid #e9e9e7;display:flex;justify-content:center;gap:clamp(28px,12vw,100px)}
 .bottom-item{background:transparent;color:#858585;border-radius:12px;padding:5px 18px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;min-width:68px}.bottom-item .nav-icon{font-size:21px;line-height:1.1}.bottom-item.active{color:#111;background:#f2f2f0}
 @media(min-width:700px){.bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:min(100%,980px);border-left:1px solid #eee;border-right:1px solid #eee;border-radius:18px 18px 0 0}}
-</style></head><body><div id="nexusSplash" aria-label="NEXUS 正在启动"><div class="splash-mark">N.</div><div class="splash-word">NEXUS</div></div><script>window.setTimeout(()=>{const s=document.getElementById('nexusSplash');if(s)s.classList.add('done');window.setTimeout(()=>s&&s.remove(),500)},2850);</script><div class="wrap"><header class="top"><div><div class="brand">N.</div><div class="tag">NEXUS DIGITAL SERVICE</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
+
+/* NEXUS accessible dark appearance */
+body.dark-mode{
+  --bg:#101114;--card:#1b1d22;--ink:#f2f3f5;--muted:#a4a8b0;--line:#30343b;--dark:#f1f2f4;--ok:#55c98a;--bad:#ff8178;
+  color-scheme:dark;background:var(--bg);color:var(--ink)
+}
+body.dark-mode .card,
+body.dark-mode .connect-card,
+body.dark-mode .bottom-nav,
+body.dark-mode .node-sheet,
+body.dark-mode .modal,
+body.dark-mode .sheet,
+body.dark-mode .country-panel{background:#1b1d22!important;color:#f2f3f5;border-color:#30343b!important;box-shadow:none}
+body.dark-mode button{background:#f1f2f4;color:#15171a}
+body.dark-mode button.secondary{background:#30343b;color:#f2f3f5}
+body.dark-mode button.ghost{background:transparent;color:#f2f3f5;border-color:#454a54}
+body.dark-mode .tabs button.active{background:#f1f2f4;color:#15171a}
+body.dark-mode .field span,
+body.dark-mode .muted,
+body.dark-mode .connect-sub,
+body.dark-mode .connect-detail,
+body.dark-mode .tag,
+body.dark-mode .small{color:#a4a8b0}
+body.dark-mode .field input,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea{background:#24272e!important;color:#f2f3f5!important;border-color:#454a54!important}
+body.dark-mode .notice,
+body.dark-mode .pill,
+body.dark-mode .country-item,
+body.dark-mode .node-item,
+body.dark-mode .row,
+body.dark-mode .country-list,
+body.dark-mode .node-list{background:#24272e;color:#f2f3f5;border-color:#30343b}
+body.dark-mode .connect-ring{background:linear-gradient(#24272e,#1b1d22);border-color:#454a54}
+body.dark-mode .connect-ring:before{border-color:#454a54}
+body.dark-mode .connect-ring.connecting:after{border-top-color:#f1f2f4;border-right-color:#f1f2f4}
+body.dark-mode .connect-symbol{color:#f2f3f5}
+body.dark-mode .bottom-item{color:#a4a8b0}
+body.dark-mode .bottom-item.active{color:#fff}
+body.dark-mode .foot{color:#858b95}
+body.dark-mode .status{color:#55c98a}
+body.dark-mode .selected-check{color:#f2f3f5}
+body.dark-mode .back-line{color:#f2f3f5}
+
+/* The dot is a separately drawn full circle, never a font punctuation glyph. */
+#nexusSplash .splash-mark{position:relative;display:inline-block;overflow:visible;clip-path:inset(100% -0.18em 0 0)}
+#nexusSplash .splash-dot{
+  position:absolute;display:block;width:.145em;height:.145em;border-radius:50%;
+  right:-.13em;bottom:.055em;background:currentColor;clip-path:none;flex:none
+}
+@keyframes nexusRise{
+  0%{clip-path:inset(100% -0.18em 0 0);transform:translate3d(0,30px,0);color:#dedede}
+  32%{color:#a7a7a7}
+  68%{color:#555}
+  100%{clip-path:inset(0 -0.18em 0 0);transform:translate3d(0,0,0);color:#111}
+}
+@media(prefers-reduced-motion:reduce){
+  #nexusSplash .splash-mark{clip-path:none}
+}
+
+</style></head><body><div id="nexusSplash" aria-label="NEXUS 正在启动"><div class="splash-mark" aria-label="N"><span class="splash-letter">N</span><span class="splash-dot" aria-hidden="true"></span></div><div class="splash-word">NEXUS</div></div><script>window.setTimeout(()=>{const s=document.getElementById('nexusSplash');if(s)s.classList.add('done');window.setTimeout(()=>s&&s.remove(),500)},2850);</script><div class="wrap"><header class="top"><div><div class="brand">N.</div><div class="tag">NEXUS DIGITAL SERVICE</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
 <section id="authView" class="card hero"><div class="tag">WELCOME TO NEXUS</div><h1>稳定 · 高速 · 安全</h1><p class="muted">登录后进入连接主页，账户与订阅功能可在个人中心管理。</p><div class="grid"><label class="field"><span>邮箱</span><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label><label class="field"><span>密码</span><input id="password" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><label class="field" id="nickWrap"><span>昵称（注册时填写）</span><input id="nickname" placeholder="你的昵称"></label></div><div class="actions"><button id="loginBtn">登录</button><button id="signupBtn" class="secondary">注册账户</button><button id="resetBtn" class="ghost">找回密码</button></div><div id="authMsg" class="notice hidden"></div><p class="small muted">注册后请到邮箱完成验证，再返回登录。若收不到邮件，请检查垃圾邮件文件夹。</p></section>
 <section id="appView" class="hidden">
 <section id="screen-home" class="mainScreen">
@@ -41,7 +102,7 @@ body{padding-bottom:86px}.mainScreen{min-height:60vh}.screen-heading{padding:14p
 </section>
 <section id="screen-settings" class="mainScreen hidden">
 <div class="settings-heading"><div class="tag">YOUR ACCOUNT</div><h2>设置</h2></div><nav class="tabs"><button class="active" data-tab="home">个人中心</button><button data-tab="plans">服务套餐</button><button data-tab="orders">我的订单</button><button data-tab="profile">个人资料</button><button data-tab="admin" id="adminTab" class="hidden">管理后台</button></nav>
-<section id="tab-home" class="tabPanel"><div class="card hero"><div class="tag">ACCOUNT OVERVIEW</div><h1 id="welcome">账户中心</h1><div class="muted" id="userEmail"></div><div class="row"><span>账户状态</span><b id="accountStatus" class="status">—</b></div><div class="row"><span>当前订阅</span><b id="subStatus">暂无有效订阅</b></div><div class="row"><span>到期时间</span><b id="subEnd">—</b></div></div><div class="grid"><div class="card"><div class="muted">账户昵称</div><h2 id="homeNick">—</h2><div class="small muted">你的 NEXUS 账户</div></div><div class="card"><div class="muted">订阅状态</div><h2 id="homeSub">未订阅</h2><div class="small muted">订阅由管理端确认生效</div></div></div><div class="notice">当前版本暂不接入在线支付。你可以浏览套餐并提交订单申请，管理员确认后更新订阅状态。</div></section>
+<section id="tab-home" class="tabPanel"><div class="card hero"><div class="tag">ACCOUNT OVERVIEW</div><h1 id="welcome">账户中心</h1><div class="muted" id="userEmail"></div><div class="row"><span>账户状态</span><b id="accountStatus" class="status">—</b></div><div class="row"><span>当前订阅</span><b id="subStatus">暂无有效订阅</b></div><div class="row"><span>到期时间</span><b id="subEnd">—</b></div></div><div class="grid"><div class="card"><div class="muted">账户昵称</div><h2 id="homeNick">—</h2><div class="small muted">你的 NEXUS 账户</div></div><div class="card"><div class="muted">订阅状态</div><h2 id="homeSub">未订阅</h2><div class="small muted">订阅由管理端确认生效</div></div></div><div class="card appearance-card"><div class="section-title">外观模式</div><p class="muted small">选择适合当前环境的显示方式</p><label class="field"><span>主题</span><select id="themeMode" aria-label="外观模式"><option value="system">跟随系统</option><option value="light">浅色模式</option><option value="dark">深色模式</option></select></label></div><div class="notice">当前版本暂不接入在线支付。你可以浏览套餐并提交订单申请，管理员确认后更新订阅状态。</div></section>
 <section id="tab-plans" class="tabPanel hidden"><div class="section-title">服务套餐</div><div id="plansList" class="grid"><div class="card muted">正在加载套餐…</div></div></section>
 <section id="tab-orders" class="tabPanel hidden"><div class="section-title">我的订单</div><div class="card" id="ordersList">正在加载订单…</div></section>
 <section id="tab-profile" class="tabPanel hidden"><div class="section-title">个人资料</div><div class="card"><label class="field"><span>昵称</span><input id="profileNick" maxlength="40"></label><button id="saveProfile">保存资料</button><div id="profileMsg" class="notice hidden"></div></div></section>
@@ -59,6 +120,25 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL='https://nxztglauevgpheslgqai.supabase.co';
 const SUPABASE_KEY='sb_publishable_GvWAP-TRle1JOk6w4Oh2hg_ygaf_Bi3';
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);let user=null,profile=null;
+
+const themeSelect=document.getElementById('themeMode');
+function applyTheme(mode){
+  const dark=mode==='dark' || (mode==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.body.classList.toggle('dark-mode',dark);
+  if(themeSelect) themeSelect.value=mode;
+  try{localStorage.setItem('nexus-theme-mode',mode)}catch(e){}
+}
+let savedTheme='system';
+try{savedTheme=localStorage.getItem('nexus-theme-mode')||'system'}catch(e){}
+applyTheme(savedTheme);
+if(themeSelect) themeSelect.addEventListener('change',()=>applyTheme(themeSelect.value));
+if(window.matchMedia){
+  const systemTheme=window.matchMedia('(prefers-color-scheme: dark)');
+  const onSystemTheme=()=>{let mode='system';try{mode=localStorage.getItem('nexus-theme-mode')||'system'}catch(e){}if(mode==='system')applyTheme('system')};
+  if(systemTheme.addEventListener)systemTheme.addEventListener('change',onSystemTheme);
+  else if(systemTheme.addListener)systemTheme.addListener(onSystemTheme);
+}
+
 const $=id=>document.getElementById(id),msg=(id,t,err=false)=>{const e=$(id);e.textContent=t;e.classList.remove('hidden','error','success');e.classList.add(err?'error':'success')},fmt=v=>v?new Date(v).toLocaleString('zh-CN'):'—';
 function showApp(on){$('authView').classList.toggle('hidden',on);$('appView').classList.toggle('hidden',!on);$('topLogout').classList.toggle('hidden',!on)}
 async function auth(action){const email=$('email').value.trim(),password=$('password').value;if(!email)return msg('authMsg','请填写邮箱。',true);if(action!=='reset'&&!password)return msg('authMsg','请填写密码。',true);let r;if(action==='login')r=await sb.auth.signInWithPassword({email,password});if(action==='signup')r=await sb.auth.signUp({email,password,options:{data:{display_name:$('nickname').value.trim()}}});if(action==='reset')r=await sb.auth.resetPasswordForEmail(email);if(r.error)return msg('authMsg',r.error.message,true);msg('authMsg',action==='signup'?'注册请求已提交，请检查邮箱并点击验证链接。':action==='reset'?'密码重置邮件已发送，请检查邮箱。':'登录成功。');if(action==='login'&&r.data.user){user=r.data.user;await loadApp()}}
