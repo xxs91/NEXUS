@@ -33,10 +33,13 @@ body.dark-mode .node-sheet,
 body.dark-mode .modal,
 body.dark-mode .sheet,
 body.dark-mode .country-panel{background:#1b1d22!important;color:#f2f3f5;border-color:#30343b!important;box-shadow:none}
-body.dark-mode button{background:#f1f2f4;color:#15171a}
-body.dark-mode button.secondary{background:#30343b;color:#f2f3f5}
-body.dark-mode button.ghost{background:transparent;color:#f2f3f5;border-color:#454a54}
-body.dark-mode .tabs button.active{background:#f1f2f4;color:#15171a}
+body.dark-mode button{background:transparent!important;color:var(--ink)!important;border-color:transparent!important;box-shadow:none!important}
+body.dark-mode button.secondary,
+body.dark-mode button.ghost{background:transparent!important;color:var(--ink)!important;border-color:transparent!important}
+body.dark-mode .tabs button.active{background:transparent!important;color:var(--ink)!important;box-shadow:inset 0 -2px 0 var(--ink)!important}
+body.dark-mode button:focus-visible{outline:1px solid var(--muted);outline-offset:3px}
+body.dark-mode .connect-ring{background:transparent;border-color:var(--line)}
+body.dark-mode .connect-ring:before{border-color:var(--line)}
 body.dark-mode .field span,
 body.dark-mode .muted,
 body.dark-mode .connect-sub,
@@ -69,7 +72,7 @@ body.dark-mode .back-line{color:#f2f3f5}
 #nexusSplash .splash-mark{position:relative;display:inline-block;overflow:visible;clip-path:inset(100% -0.18em 0 0)}
 #nexusSplash .splash-dot{
   position:absolute;display:block;width:.145em;height:.145em;border-radius:50%;
-  right:-.13em;bottom:.055em;background:currentColor;clip-path:none;flex:none
+  right:-.035em;bottom:.12em;background:currentColor;clip-path:none;flex:none
 }
 @keyframes nexusRise{
   0%{clip-path:inset(100% -0.18em 0 0);transform:translate3d(0,30px,0);color:#dedede}
