@@ -1,7 +1,8 @@
-name: NEXUS - Extract, Build and Upload APK
+name: NEXUS - Auto Extract and Build APK
 
 on:
   workflow_dispatch:
+
   push:
     branches:
       - main
@@ -25,55 +26,87 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find and extract uploaded NEXUS ZIP
+      # 只处理本次提交新增或修改的 ZIP
+      # 手动运行时不扫描历史 ZIP
+      - name: Detect newly uploaded ZIP
+        id: detect
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            mapfile -t ZIP_FILES < <(
-              git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
-                | grep -Ei '^[^/]+\.zip$' || true
-            )
-          else
-            mapfile -t ZIP_FILES < <(
-              find . -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' | sort
-            )
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "手动启动：直接使用当前项目源码构建。"
+            exit 0
           fi
 
-          if [[ ${#ZIP_FILES[@]} -eq 0 ]]; then
-            echo "没有找到本次上传的 ZIP 文件。"
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+
+          if [[ "$BEFORE" =~ ^0+$ ]]; then
+            BEFORE="$(git rev-parse "${AFTER}^" 2>/dev/null || true)"
+          fi
+
+          if [[ -z "$BEFORE" ]]; then
+            echo "无法确定本次提交的变更范围。"
             exit 1
+          fi
+
+          mapfile -t ZIP_FILES < <(
+            git diff --name-only "$BEFORE" "$AFTER" \
+              | grep -Ei '^[^/]+\.zip$' || true
+          )
+
+          if [[ ${#ZIP_FILES[@]} -eq 0 ]]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "本次没有上传 ZIP，使用现有源码构建。"
+            exit 0
           fi
 
           if [[ ${#ZIP_FILES[@]} -gt 1 ]]; then
-            echo "检测到多个 ZIP，请一次只上传一个更新包："
-            printf ' - %s\n' "${ZIP_FILES[@]}"
+            echo "本次上传了多个 ZIP，请一次上传一个更新包。"
+            printf '%s\n' "${ZIP_FILES[@]}"
             exit 1
           fi
 
-          ZIP_FILE="${ZIP_FILES[0]}"
-          echo "使用更新包：${ZIP_FILE}"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "zip_file=${ZIP_FILES[0]}" >> "$GITHUB_OUTPUT"
+
+          echo "本次更新包：${ZIP_FILES[0]}"
+
+      # 自动解压并识别项目目录
+      - name: Extract NEXUS update
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP_FILE="${{ steps.detect.outputs.zip_file }}"
 
           mkdir -p /tmp/nexus-package
           unzip -q -o "$ZIP_FILE" -d /tmp/nexus-package
 
-          SOURCE_DIR="$(
-            find /tmp/nexus-package -type f -name package.json -printf '%h\n' |
-            while read -r dir; do
-              if [[ -f "$dir/settings.gradle" && -d "$dir/app" ]]; then
-                echo "$dir"
-                break
-              fi
-            done
-          )"
+          SOURCE_DIR=""
 
-          if [[ -z "${SOURCE_DIR:-}" ]]; then
-            echo "错误：没有找到有效的 NEXUS 项目目录。"
+          while IFS= read -r dir; do
+            if [[ -f "$dir/package.json" ]] && \
+               [[ -f "$dir/settings.gradle" ]] && \
+               [[ -d "$dir/app" ]]; then
+              SOURCE_DIR="$dir"
+              break
+            fi
+          done < <(
+            find /tmp/nexus-package \
+              -type f -name package.json -printf '%h\n'
+          )
+
+          if [[ -z "$SOURCE_DIR" ]]; then
+            echo "错误：没有找到有效的 NEXUS Android 项目。"
+            find /tmp/nexus-package -maxdepth 4 -type f | head -100
             exit 1
           fi
 
-          echo "项目目录：$SOURCE_DIR"
+          echo "识别到项目目录：$SOURCE_DIR"
 
           rsync -a --delete \
             --exclude='.git/' \
@@ -82,7 +115,8 @@ jobs:
 
           rm -f "$ZIP_FILE"
 
-      - name: Normalize Android build settings
+      # 处理之前遇到的已知构建配置问题
+      - name: Check Android build configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -94,11 +128,18 @@ jobs:
           fi
 
           if [[ -f app/build.gradle ]] && \
-             ! grep -q "androidx.appcompat:appcompat" app/build.gradle; then
-            sed -i "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" app/build.gradle
+             grep -q 'dependencies[[:space:]]*{' app/build.gradle && \
+             ! grep -q 'androidx.appcompat:appcompat' app/build.gradle; then
+
+            sed -i \
+              "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" \
+              app/build.gradle
           fi
 
-      - name: Commit extracted project
+          echo "Android 配置检查完成。"
+
+      # 只有文件发生变化才提交
+      - name: Save updated project
         shell: bash
         run: |
           set -euo pipefail
@@ -109,8 +150,10 @@ jobs:
           git add -A
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update NEXUS project from uploaded ZIP"
+            git commit -m "Update NEXUS project"
             git push
+          else
+            echo "没有需要提交的项目变化。"
           fi
 
       - name: Set up Java 21
@@ -138,7 +181,7 @@ jobs:
       - name: Build Android APK
         run: gradle assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-debug-apk
