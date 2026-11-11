@@ -1,18 +1,130 @@
-{
-  "name": "nexus-app",
-  "version": "1.0.2",
-  "private": true,
-  "description": "NEXUS account and subscription management app",
-  "scripts": {
-    "build": "node scripts/verify-build.mjs",
-    "cap:sync": "cap sync android",
-    "android": "npm run build && cap sync android"
-  },
-  "dependencies": {
-    "@capacitor/android": "8.6.0",
-    "@capacitor/core": "8.6.0"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "8.6.0"
-  }
-}
+name: NEXUS - Merge Project and Build APK
+
+'on':
+  workflow_dispatch:
+    inputs:
+      update_zip:
+        description: Select the NEXUS update package
+        required: true
+        type: choice
+        options:
+          - NEXUS-1.0.1-merged.zip
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nexus-android-build
+  cancel-in-progress: false
+
+jobs:
+  merge-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract merged project
+        run: |
+          set -e
+          ZIP="${{ inputs.update_zip }}"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: ZIP file not found: $ZIP"
+            exit 1
+          fi
+
+          mkdir -p /tmp/nexus-merged
+          unzip -oq "$ZIP" -d /tmp/nexus-merged
+
+          SOURCE_DIR=$(find /tmp/nexus-merged -type f -name package.json \
+            -not -path '*/node_modules/*' \
+            -printf '%h\n' | head -n 1)
+
+          if [ -z "$SOURCE_DIR" ]; then
+            echo "ERROR: package.json not found in ZIP"
+            exit 1
+          fi
+
+          if [ ! -f "$SOURCE_DIR/capacitor.config.json" ]; then
+            echo "ERROR: capacitor.config.json not found"
+            exit 1
+          fi
+
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            "$SOURCE_DIR/" ./
+
+      - name: Check project configuration
+        run: |
+          set -e
+          test -f package.json
+          test -f capacitor.config.json
+
+          node -e "
+          const p=require('./package.json');
+          if (!p.dependencies?.['@capacitor/core']) {
+            throw new Error('Missing @capacitor/core');
+          }
+          if (!p.dependencies?.['@capacitor/android']) {
+            throw new Error('Missing @capacitor/android');
+          }
+          console.log('Capacitor dependencies:', p.dependencies);
+          "
+
+      - name: Save merged project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Merge NEXUS project update"
+            git push
+          else
+            echo "No project changes to save"
+          fi
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web project
+        run: npm run build
+
+      - name: Add Android platform and sync
+        run: |
+          set -e
+
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+          npx cap sync android
+
+      - name: Build Android APK
+        run: |
+          set -e
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-1.0.2-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
