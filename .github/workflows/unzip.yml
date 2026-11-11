@@ -1,4 +1,4 @@
-name: Extract NEXUS ZIP and Build APK
+name: NEXUS - Extract, Build and Upload APK
 
 on:
   workflow_dispatch:
@@ -6,65 +6,142 @@ on:
     branches:
       - main
     paths:
-      - 'NEXUS_A方案连接主页更新包.zip'
+      - '*.zip'
 
 permissions:
   contents: write
 
+concurrency:
+  group: nexus-apk-build
+  cancel-in-progress: false
+
 jobs:
-  extract-and-build:
+  extract-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract NEXUS update package
+      - name: Find and extract uploaded NEXUS ZIP
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
-          ZIP_FILE="NEXUS_A方案连接主页更新包.zip"
-
-          if [ -f "$ZIP_FILE" ]; then
-            echo "发现更新包，开始解压"
-
-            mkdir -p /tmp/nexus_update
-            unzip -q "$ZIP_FILE" -d /tmp/nexus_update
-
-            if [ ! -d "/tmp/nexus_update/nexus_work" ]; then
-              echo "错误：没有找到 nexus_work 文件夹"
-              exit 1
-            fi
-
-            rsync -a --exclude='.github/workflows/' \
-              /tmp/nexus_update/nexus_work/ ./
-
-            rm -f "$ZIP_FILE"
-
-            echo "更新包解压成功"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            mapfile -t ZIP_FILES < <(
+              git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+                | grep -Ei '^[^/]+\.zip$' || true
+            )
           else
-            echo "没有发现 ZIP，直接使用现有项目源码构建"
+            mapfile -t ZIP_FILES < <(
+              find . -maxdepth 1 -type f -iname '*.zip' -printf '%f\n' | sort
+            )
           fi
 
-      - name: Save updated project
+          if [[ ${#ZIP_FILES[@]} -eq 0 ]]; then
+            echo "没有找到本次上传的 ZIP 文件。"
+            exit 1
+          fi
+
+          if [[ ${#ZIP_FILES[@]} -gt 1 ]]; then
+            echo "检测到多个 ZIP，请一次只上传一个更新包："
+            printf ' - %s\n' "${ZIP_FILES[@]}"
+            exit 1
+          fi
+
+          ZIP_FILE="${ZIP_FILES[0]}"
+          echo "使用更新包：${ZIP_FILE}"
+
+          mkdir -p /tmp/nexus-package
+          unzip -q -o "$ZIP_FILE" -d /tmp/nexus-package
+
+          SOURCE_DIR="$(
+            find /tmp/nexus-package -type f -name package.json -printf '%h\n' |
+            while read -r dir; do
+              if [[ -f "$dir/settings.gradle" && -d "$dir/app" ]]; then
+                echo "$dir"
+                break
+              fi
+            done
+          )"
+
+          if [[ -z "${SOURCE_DIR:-}" ]]; then
+            echo "错误：没有找到有效的 NEXUS 项目目录。"
+            exit 1
+          fi
+
+          echo "项目目录：$SOURCE_DIR"
+
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            "$SOURCE_DIR/" ./
+
+          rm -f "$ZIP_FILE"
+
+      - name: Normalize Android build settings
+        shell: bash
         run: |
+          set -euo pipefail
+
+          if [[ -f settings.gradle ]]; then
+            sed -i \
+              's/RepositoriesMode\.FAIL_ON_PROJECT_REPOS/RepositoriesMode.PREFER_PROJECT/g' \
+              settings.gradle
+          fi
+
+          if [[ -f app/build.gradle ]] && \
+             ! grep -q "androidx.appcompat:appcompat" app/build.gradle; then
+            sed -i "/dependencies[[:space:]]*{/a\\    implementation 'androidx.appcompat:appcompat:1.7.1'" app/build.gradle
+          fi
+
+      - name: Commit extracted project
+        shell: bash
+        run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update NEXUS connection homepage"
+            git commit -m "Update NEXUS project from uploaded ZIP"
             git push
-          else
-            echo "没有需要提交的新文件"
           fi
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web project
+        run: npm run build
+
+      - name: Build Android APK
+        run: gradle assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
