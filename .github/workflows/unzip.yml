@@ -153,18 +153,61 @@ jobs:
       - name: Verify web project
         run: npm run build
 
-      - name: Build Android APK
-        run: gradle assembleDebug
+      - name: Restore NEXUS signing key
+        env:
+          NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$NEXUS_KEYSTORE_BASE64" ]]; then
+            echo "Missing NEXUS_KEYSTORE_BASE64"
+            exit 1
+          fi
+
+          KEYSTORE="$RUNNER_TEMP/nexus-release.jks"
+
+          printf '%s' "$NEXUS_KEYSTORE_BASE64" \
+            | base64 --decode > "$KEYSTORE"
+
+          chmod 600 "$KEYSTORE"
+
+          echo "NEXUS_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+
+      - name: Build Android APK with fixed signature
+        env:
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -s "$NEXUS_KEYSTORE_PATH"
+
+          if [[ -z "$NEXUS_KEYSTORE_PASSWORD" ]] ||
+             [[ -z "$NEXUS_KEY_ALIAS" ]] ||
+             [[ -z "$NEXUS_KEY_PASSWORD" ]]; then
+            echo "Missing signing secrets."
+            exit 1
+          fi
+
+          gradle assembleDebug
 
       - name: Verify APK
         run: |
-          test -f app/build/outputs/apk/debug/app-debug.apk
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          set -euo pipefail
+
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          test -f "$APK"
+          ls -lh "$APK"
+
+          apksigner verify --verbose "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-${{ steps.version.outputs.version }}-debug-apk
+          name: NEXUS-${{ steps.version.outputs.version }}-signed-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
