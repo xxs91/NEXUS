@@ -2,16 +2,6 @@ plugins {
     id 'com.android.application'
 }
 
-def nexusKeystorePath = System.getenv("NEXUS_KEYSTORE_PATH")
-def nexusStorePassword = System.getenv("NEXUS_KEYSTORE_PASSWORD")
-def nexusKeyAlias = System.getenv("NEXUS_KEY_ALIAS")
-def nexusKeyPassword = System.getenv("NEXUS_KEY_PASSWORD")
-
-def hasNexusSigning = nexusKeystorePath &&
-        nexusStorePassword &&
-        nexusKeyAlias &&
-        nexusKeyPassword
-
 android {
     namespace 'com.nexus.app'
     compileSdk 36
@@ -22,25 +12,6 @@ android {
         targetSdk 36
         versionCode 8
         versionName "1.0.7"
-    }
-
-    if (hasNexusSigning) {
-        signingConfigs {
-            nexus {
-                storeFile file(nexusKeystorePath)
-                storePassword nexusStorePassword
-                keyAlias nexusKeyAlias
-                keyPassword nexusKeyPassword
-            }
-        }
-    }
-
-    buildTypes {
-        debug {
-            if (hasNexusSigning) {
-                signingConfig signingConfigs.nexus
-            }
-        }
     }
 
     compileOptions {
