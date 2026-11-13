@@ -23,18 +23,15 @@ jobs:
           fetch-depth: 0
 
       - name: Find newest ZIP
-        id: find_zip
         shell: bash
         run: |
           set -euo pipefail
 
           ZIP=$(find . -maxdepth 1 -type f -name 'NEXUS-*.zip' -printf '%T@ %p\n' \
-            | sort -nr \
-            | head -1 \
-            | cut -d' ' -f2-)
+            | sort -nr | head -1 | cut -d' ' -f2-)
 
           if [[ -z "$ZIP" ]]; then
-            echo "No NEXUS-*.zip found in repository root."
+            echo "No NEXUS-*.zip found."
             exit 1
           fi
 
@@ -50,28 +47,26 @@ jobs:
           unzip -q "$ZIP_PATH" -d /tmp/nexus-package
 
           PROJECT_DIR=$(find /tmp/nexus-package \
-            -type f \
-            -name package.json \
-            -printf '%h\n' \
-            | while read -r DIR; do
-                if [[ -f "$DIR/settings.gradle" || -f "$DIR/settings.gradle.kts" ]] \
-                  && [[ -f "$DIR/app/build.gradle" ]] \
-                  && [[ -d "$DIR/app/src/main" ]]; then
-                  echo "$DIR"
-                  break
-                fi
-              done)
+            -type f -name package.json -printf '%h\n' |
+            while read -r DIR; do
+              if [[ -f "$DIR/settings.gradle" || -f "$DIR/settings.gradle.kts" ]] \
+                && [[ -f "$DIR/app/build.gradle" ]] \
+                && [[ -d "$DIR/app/src/main" ]]; then
+                echo "$DIR"
+                break
+              fi
+            done)
 
           if [[ -z "$PROJECT_DIR" ]]; then
-            echo "Could not find a valid NEXUS Android project."
+            echo "Could not find a valid Android project."
             exit 1
           fi
 
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project directory: $PROJECT_DIR"
 
-          rsync -a --delete \
+          rsync -a \
             --exclude='.git/' \
+            --exclude='.github/' \
             "$PROJECT_DIR/" ./
 
       - name: Verify project version
@@ -79,12 +74,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          node -e "const p=require('./package.json'); console.log('package.json version:',p.version)"
-
-          if ! grep -q 'versionName' app/build.gradle; then
-            echo "versionName not found in app/build.gradle"
-            exit 1
-          fi
+          node -e "const p=require('./package.json'); console.log('Version:',p.version)"
 
           grep 'versionName' app/build.gradle
 
@@ -102,7 +92,7 @@ jobs:
             git commit -m "Update NEXUS project from ZIP"
             git push
           else
-            echo "No project changes to save."
+            echo "No project changes."
           fi
 
       - name: Set up Java 21
@@ -122,16 +112,10 @@ jobs:
           node-version: '22'
 
       - name: Install web dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install
+        run: npm install
 
       - name: Verify web project
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run build
+        run: npm run build
 
       - name: Restore NEXUS signing key
         shell: bash
@@ -141,7 +125,7 @@ jobs:
           set -euo pipefail
 
           if [[ -z "$NEXUS_KEYSTORE_BASE64" ]]; then
-            echo "NEXUS_KEYSTORE_BASE64 secret is missing."
+            echo "Signing key secret is missing."
             exit 1
           fi
 
@@ -165,7 +149,7 @@ jobs:
           set -euo pipefail
 
           if [[ -z "$NEXUS_KEYSTORE_PASSWORD" || -z "$NEXUS_KEY_ALIAS" || -z "$NEXUS_KEY_PASSWORD" ]]; then
-            echo "One or more signing secrets are missing."
+            echo "Signing secrets are missing."
             exit 1
           fi
 
@@ -178,32 +162,24 @@ jobs:
 
           APK="app/build/outputs/apk/debug/app-debug.apk"
 
-          if [[ ! -f "$APK" ]]; then
-            echo "APK file not found."
-            exit 1
-          fi
-
+          test -f "$APK"
           ls -lh "$APK"
 
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
 
           if [[ ! -d "$SDK/build-tools" ]]; then
-            echo "Android SDK Build Tools directory not found: $SDK/build-tools"
+            echo "Android SDK Build Tools directory not found."
             exit 1
           fi
 
           APKSIGNER=$(find "$SDK/build-tools" \
-            -type f \
-            -name apksigner \
-            | sort -V \
-            | tail -1)
+            -type f -name apksigner |
+            sort -V | tail -1)
 
           if [[ -z "$APKSIGNER" ]]; then
-            echo "apksigner was not found."
+            echo "apksigner not found."
             exit 1
           fi
-
-          echo "Using: $APKSIGNER"
 
           "$APKSIGNER" verify --verbose "$APK"
           "$APKSIGNER" verify --print-certs "$APK"
