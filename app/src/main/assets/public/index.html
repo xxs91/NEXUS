@@ -71,9 +71,22 @@ body.dark-mode .back-line{color:#f2f3f5}
 /* NEXUS splash: exact N mark, bottom-up emergence, no subtitle or dot */
 #nexusSplash{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:1;visibility:visible;transition:opacity .48s ease,visibility .48s ease;}
 #nexusSplash.done{opacity:0;visibility:hidden;pointer-events:none;}
-#nexusSplash .splash-mark{display:block;width:clamp(260px,76vw,500px);height:auto;max-height:66vh;object-fit:contain;opacity:.12;transform:translate3d(0,30px,0);clip-path:inset(100% 0 0 0);animation:nexusRise 1.95s cubic-bezier(.22,.72,.18,1) 0s forwards;}
+#nexusSplash .splash-mark{display:block;height:clamp(112px,30vw,154px);width:auto;max-width:80vw;object-fit:contain;object-position:center;image-rendering:auto;opacity:.12;transform:translate3d(0,30px,0);clip-path:inset(100% 0 0 0);animation:nexusRise 1.95s cubic-bezier(.22,.72,.18,1) 0s forwards;}
 @keyframes nexusRise{0%{clip-path:inset(100% 0 0 0);transform:translate3d(0,30px,0);opacity:.12;}32%{opacity:.34;}68%{opacity:.68;}100%{clip-path:inset(0 0 0 0);transform:translate3d(0,0,0);opacity:1;}}
 @media(prefers-reduced-motion:reduce){#nexusSplash .splash-mark{animation:none;opacity:1;transform:none;clip-path:none;}#nexusSplash{transition:none;}}
+
+
+/* Security protocol preference controls */
+.security-card{margin-top:14px}
+.protocol-options{display:grid;gap:10px;margin-top:14px}
+.protocol-option{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line,#e8e8e8);border-radius:14px;background:transparent;cursor:pointer}
+.protocol-option:has(input:checked){border-color:var(--text,#222);box-shadow:inset 0 0 0 1px var(--text,#222)}
+.protocol-option input{width:18px;height:18px;accent-color:var(--text,#222);flex:0 0 auto}
+.protocol-copy{display:flex;flex-direction:column;gap:4px}
+.protocol-copy small,.security-note{font-size:12px;opacity:.68;line-height:1.5}
+.security-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(128,128,128,.08)}
+.dark-mode .protocol-option{border-color:rgba(255,255,255,.16)}
+.dark-mode .protocol-option:has(input:checked){border-color:rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8)}
 </style></head><body><div id="nexusSplash" aria-label="NEXUS 正在启动"><img class="splash-mark" src="nexus-mark.png" alt="N"></div><script>window.setTimeout(()=>{const s=document.getElementById('nexusSplash');if(s)s.classList.add('done');window.setTimeout(()=>s&&s.remove(),500)},2850);</script><div class="wrap"><header class="top"><div><div class="brand">N</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
 <section id="authView" class="card hero"><div class="tag">WELCOME TO NEXUS</div><h1>稳定 · 高速 · 安全</h1><p class="muted">登录后进入连接主页，账户与订阅功能可在个人中心管理。</p><div class="grid"><label class="field"><span>邮箱</span><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label><label class="field"><span>密码</span><input id="password" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><label class="field" id="nickWrap"><span>昵称（注册时填写）</span><input id="nickname" placeholder="你的昵称"></label></div><div class="actions"><button id="loginBtn">登录</button><button id="signupBtn" class="secondary">注册账户</button><button id="resetBtn" class="ghost">找回密码</button></div><div id="authMsg" class="notice hidden"></div><p class="small muted">注册后请到邮箱完成验证，再返回登录。若收不到邮件，请检查垃圾邮件文件夹。</p></section>
 <section id="appView" class="hidden">
@@ -95,7 +108,15 @@ body.dark-mode .back-line{color:#f2f3f5}
 </section>
 <section id="screen-settings" class="mainScreen hidden">
 <div class="settings-heading"><div class="tag">YOUR ACCOUNT</div><h2>设置</h2></div><nav class="tabs"><button class="active" data-tab="home">个人中心</button><button data-tab="plans">服务套餐</button><button data-tab="orders">我的订单</button><button data-tab="profile">个人资料</button><button data-tab="admin" id="adminTab" class="hidden">管理后台</button></nav>
-<section id="tab-home" class="tabPanel"><div class="card hero"><div class="tag">ACCOUNT OVERVIEW</div><h1 id="welcome">账户中心</h1><div class="muted" id="userEmail"></div><div class="row"><span>账户状态</span><b id="accountStatus" class="status">—</b></div><div class="row"><span>当前订阅</span><b id="subStatus">暂无有效订阅</b></div><div class="row"><span>到期时间</span><b id="subEnd">—</b></div></div><div class="grid"><div class="card"><div class="muted">账户昵称</div><h2 id="homeNick">—</h2><div class="small muted">你的 NEXUS 账户</div></div><div class="card"><div class="muted">订阅状态</div><h2 id="homeSub">未订阅</h2><div class="small muted">订阅由管理端确认生效</div></div></div><div class="card appearance-card"><div class="section-title">外观模式</div><p class="muted small">选择适合当前环境的显示方式</p><label class="field"><span>主题</span><select id="themeMode" aria-label="外观模式"><option value="system">跟随系统</option><option value="light">浅色模式</option><option value="dark">深色模式</option></select></label></div><div class="notice">当前版本暂不接入在线支付。你可以浏览套餐并提交订单申请，管理员确认后更新订阅状态。</div></section>
+<section id="tab-home" class="tabPanel"><div class="card hero"><div class="tag">ACCOUNT OVERVIEW</div><h1 id="welcome">账户中心</h1><div class="muted" id="userEmail"></div><div class="row"><span>账户状态</span><b id="accountStatus" class="status">—</b></div><div class="row"><span>当前订阅</span><b id="subStatus">暂无有效订阅</b></div><div class="row"><span>到期时间</span><b id="subEnd">—</b></div></div><div class="grid"><div class="card"><div class="muted">账户昵称</div><h2 id="homeNick">—</h2><div class="small muted">你的 NEXUS 账户</div></div><div class="card"><div class="muted">订阅状态</div><h2 id="homeSub">未订阅</h2><div class="small muted">订阅由管理端确认生效</div></div></div><div class="card appearance-card"><div class="section-title">外观模式</div><p class="muted small">选择适合当前环境的显示方式</p><label class="field"><span>主题</span><select id="themeMode" aria-label="外观模式"><option value="system">跟随系统</option><option value="light">浅色模式</option><option value="dark">深色模式</option></select></label></div><div class="card security-card" id="connectionSecurity">
+<div class="section-title">安全连接方式</div>
+<p class="muted small">选择你希望使用的协议。此设置仅保存偏好；服务器配置及 VPN 引擎接入完成前，不会建立真实 VPN 连接。</p>
+<div class="protocol-options" role="radiogroup" aria-label="安全连接协议">
+<label class="protocol-option"><input type="radio" name="vpnProtocol" value="wireguard"><span class="protocol-copy"><b>WireGuard</b><small>现代 VPN 协议 · 需要已配置的服务器</small></span></label>
+<label class="protocol-option"><input type="radio" name="vpnProtocol" value="openvpn"><span class="protocol-copy"><b>OpenVPN</b><small>兼容性 VPN 协议 · 需要已配置的服务器</small></span></label>
+</div>
+<div class="security-note" id="protocolStatus" role="status">当前为偏好设置，尚未连接 VPN 服务器。</div>
+</div><div class="notice">当前版本暂不接入在线支付。你可以浏览套餐并提交订单申请，管理员确认后更新订阅状态。</div></section>
 <section id="tab-plans" class="tabPanel hidden"><div class="section-title">服务套餐</div><div id="plansList" class="grid"><div class="card muted">正在加载套餐…</div></div></section>
 <section id="tab-orders" class="tabPanel hidden"><div class="section-title">我的订单</div><div class="card" id="ordersList">正在加载订单…</div></section>
 <section id="tab-profile" class="tabPanel hidden"><div class="section-title">个人资料</div><div class="card"><label class="field"><span>昵称</span><input id="profileNick" maxlength="40"></label><button id="saveProfile">保存资料</button><div id="profileMsg" class="notice hidden"></div></div></section>
@@ -115,6 +136,19 @@ const SUPABASE_KEY='sb_publishable_GvWAP-TRle1JOk6w4Oh2hg_ygaf_Bi3';
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);let user=null,profile=null;
 
 const themeSelect=document.getElementById('themeMode');
+const protocolRadios=[...document.querySelectorAll('input[name="vpnProtocol"]')];
+const protocolStatus=document.getElementById('protocolStatus');
+function loadProtocolPreference(){
+  const saved=localStorage.getItem('nexus-vpn-protocol')||'wireguard';
+  protocolRadios.forEach(r=>r.checked=(r.value===saved));
+  if(protocolStatus) protocolStatus.textContent='已保存偏好：'+(saved==='openvpn'?'OpenVPN':'WireGuard')+'。尚未接入服务器配置和 VPN 引擎，不代表已经建立加密隧道。';
+}
+protocolRadios.forEach(r=>r.addEventListener('change',()=>{
+  if(!r.checked)return;
+  localStorage.setItem('nexus-vpn-protocol',r.value);
+  if(protocolStatus) protocolStatus.textContent='已保存偏好：'+(r.value==='openvpn'?'OpenVPN':'WireGuard')+'。尚未接入服务器配置和 VPN 引擎，不代表已经建立加密隧道。';
+}));
+loadProtocolPreference();
 function applyTheme(mode){
   const dark=mode==='dark' || (mode==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.body.classList.toggle('dark-mode',dark);
