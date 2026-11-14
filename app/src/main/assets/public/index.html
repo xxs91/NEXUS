@@ -130,7 +130,15 @@ body.dark-mode .back-line{color:#f2f3f5}
 </nav>
 </section><footer class="foot">NEXUS · DIGITAL SERVICE</footer></div>
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+let createClient;
+try{
+ ({createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
+}catch(e){
+ console.error('[NEXUS SDK] Supabase SDK module failed to load',{name:e?.name??'Error',message:String(e?.message||'unknown').slice(0,180)});
+ const notice=document.getElementById('authMsg');
+ if(notice){notice.textContent='登录组件加载失败：无法从网络加载认证模块，请检查网络或稍后重试。';notice.classList.remove('hidden','success');notice.classList.add('error');}
+ throw e;
+}
 const SUPABASE_URL='https://nxztglauevgpheslgqai.supabase.co';
 const SUPABASE_KEY='sb_publishable_GvWAP-TRle1JOk6w4Oh2hg_ygaf_Bi3';
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);let user=null,profile=null;
