@@ -2,6 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+def nexusKeystorePath = System.getenv('NEXUS_KEYSTORE_PATH')
+def nexusKeystorePassword = System.getenv('NEXUS_KEYSTORE_PASSWORD')
+def nexusKeyAlias = System.getenv('NEXUS_KEY_ALIAS')
+def nexusKeyPassword = System.getenv('NEXUS_KEY_PASSWORD')
+
 android {
     namespace 'com.nexus.app'
     compileSdk 36
@@ -10,8 +15,28 @@ android {
         applicationId 'com.nexus.app'
         minSdk 24
         targetSdk 36
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 9
+        versionName "1.0.8"
+    }
+
+    signingConfigs {
+        release {
+            if (nexusKeystorePath && nexusKeystorePassword && nexusKeyAlias && nexusKeyPassword) {
+                storeFile file(nexusKeystorePath)
+                storePassword nexusKeystorePassword
+                keyAlias nexusKeyAlias
+                keyPassword nexusKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (nexusKeystorePath && nexusKeystorePassword && nexusKeyAlias && nexusKeyPassword) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
     }
 
     compileOptions {
