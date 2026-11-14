@@ -168,7 +168,36 @@ if(window.matchMedia){
 
 const $=id=>document.getElementById(id),msg=(id,t,err=false)=>{const e=$(id);e.textContent=t;e.classList.remove('hidden','error','success');e.classList.add(err?'error':'success')},fmt=v=>v?new Date(v).toLocaleString('zh-CN'):'—';
 function showApp(on){$('authView').classList.toggle('hidden',on);$('appView').classList.toggle('hidden',!on);$('topLogout').classList.toggle('hidden',!on)}
-async function auth(action){const email=$('email').value.trim(),password=$('password').value;if(!email)return msg('authMsg','请填写邮箱。',true);if(action!=='reset'&&!password)return msg('authMsg','请填写密码。',true);let r;if(action==='login')r=await sb.auth.signInWithPassword({email,password});if(action==='signup')r=await sb.auth.signUp({email,password,options:{data:{display_name:$('nickname').value.trim()}}});if(action==='reset')r=await sb.auth.resetPasswordForEmail(email);if(r.error)return msg('authMsg',r.error.message,true);msg('authMsg',action==='signup'?'注册请求已提交，请检查邮箱并点击验证链接。':action==='reset'?'密码重置邮件已发送，请检查邮箱。':'登录成功。');if(action==='login'&&r.data.user){user=r.data.user;await loadApp()}}
+async function auth(action){
+ const email=$('email').value.trim(),password=$('password').value;
+ if(!email)return msg('authMsg','请填写邮箱。',true);
+ if(action!=='reset'&&!password)return msg('authMsg','请填写密码。',true);
+ const started=Date.now();
+ const label=action==='login'?'登录':action==='signup'?'注册':'密码重置';
+ try{
+  let r;
+  if(action==='login')r=await sb.auth.signInWithPassword({email,password});
+  if(action==='signup')r=await sb.auth.signUp({email,password,options:{data:{display_name:$('nickname').value.trim()}}});
+  if(action==='reset')r=await sb.auth.resetPasswordForEmail(email);
+  const elapsed=Date.now()-started;
+  if(r.error){
+   const e=r.error;
+   console.warn('[NEXUS auth]',{action,status:e.status??null,code:e.code??null,name:e.name??null,duration_ms:elapsed});
+   const detail=e.status?('HTTP '+e.status+' · '):'';
+   return msg('authMsg',detail+e.message,true);
+  }
+  console.info('[NEXUS auth]',{action,result:'success',duration_ms:elapsed});
+  msg('authMsg',action==='signup'?'注册请求已提交，请检查邮箱并点击验证链接。':action==='reset'?'密码重置邮件已发送，请检查邮箱。':'登录成功。');
+  if(action==='login'&&r.data.user){user=r.data.user;await loadApp()}
+ }catch(e){
+  const elapsed=Date.now()-started;
+  console.error('[NEXUS auth]',{action,name:e?.name??'Error',message:String(e?.message||'unknown').slice(0,180),duration_ms:elapsed});
+  const text= /failed to fetch|network|load failed|timeout|连接|网络/i.test(String(e?.message||''))
+   ?'网络请求失败：请检查网络、DNS 或 VPN 后重试。'
+   :'请求未能完成：'+String(e?.message||'未知错误').slice(0,160);
+  msg('authMsg',text,true);
+ }
+}
 $('loginBtn').onclick=()=>auth('login');$('signupBtn').onclick=()=>auth('signup');$('resetBtn').onclick=()=>auth('reset');
 async function loadApp(){showApp(true);$('userEmail').textContent=user.email||'';let p=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();profile=p.data||{display_name:user.user_metadata?.display_name||'',account_status:'active'};$('welcome').textContent='你好，'+(profile.display_name||'NEXUS 用户');$('homeNick').textContent=profile.display_name||'未设置';$('profileNick').value=profile.display_name||'';$('accountStatus').textContent=profile.account_status||'active';await Promise.all([loadSubscription(),loadPlans(),loadOrders(),checkAdmin()])}
 async function loadSubscription(){const r=await sb.from('subscriptions').select('*,plans(name)').eq('user_id',user.id).eq('status','active').order('ends_at',{ascending:false}).limit(1).maybeSingle();$('subStatus').textContent=r.data?'有效 · '+(r.data.plans?.name||'订阅'):'暂无有效订阅';$('subEnd').textContent=r.data?fmt(r.data.ends_at):'—';$('homeSub').textContent=r.data?'有效订阅':'未订阅'}
