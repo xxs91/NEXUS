@@ -230,5 +230,17 @@ const sheet=$('nodeSheet'),countries=$('countryList'),nodes=$('nodeList');functi
 function showNodes(){ $('sheetTitle').textContent=chosenRegion.flag+' '+chosenRegion.name;countries.classList.add('hidden');nodes.classList.remove('hidden');nodes.innerHTML='<div class="back-line" id="backCountries">‹ 所有地区</div>'+chosenRegion.nodes.map((n,i)=>`<div class="node-item" data-node="${i}"><span class="node-copy"><b>${n[0]}</b><small>示例节点 · 尚无实时数据</small></span><span class="latency">${n[1]}</span><span class="selected-check">${n===chosenNode&&chosenRegion===window.prevRegion?'✓':'›'}</span></div>`).join('');$('backCountries').onclick=showCountries;nodes.querySelectorAll('[data-node]').forEach(el=>el.onclick=()=>{chosenNode=chosenRegion.nodes[+el.dataset.node];$('selectedRegion').textContent=chosenRegion.flag+' '+chosenRegion.name;$('selectedNode').textContent=chosenNode[0];$('nodeLatency').textContent=chosenNode[1]==='—'?'—':chosenNode[1];sheet.classList.add('hidden');$('connectState').textContent='尚未连接';$('connectDetail').textContent='已选择节点 · 演示模式';demoConnected=false;$('connectBtn').textContent='连接'})}
 $('openNodes').onclick=()=>{showCountries();sheet.classList.remove('hidden')};$('closeNodes').onclick=()=>sheet.classList.add('hidden');sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.classList.add('hidden')});$('connectBtn').onclick=()=>{if(demoBusy)return;demoBusy=true;demoConnected=false;$('connectBtn').disabled=true;$('connectBtn').textContent='处理中…';$('connectRing').classList.add('connecting');$('connectState').textContent='正在连接';$('connectDetail').textContent='正在演示连接动画…';setTimeout(()=>{$('connectRing').classList.remove('connecting');$('connectState').textContent='演示已完成';$('connectDetail').textContent='此原型没有建立真实网络连接';$('connectBtn').textContent='重新演示';$('connectBtn').disabled=false;demoBusy=false},1500)};
 
-const {data:{session}}=await sb.auth.getSession();if(session?.user){user=session.user;await loadApp()}sb.auth.onAuthStateChange((_event,session)=>{if(session?.user){user=session.user;loadApp()}else if(!user)showApp(false)});
+try{
+ const {data:{session}}=await sb.auth.getSession();
+ if(session?.user){user=session.user;await loadApp()}
+ sb.auth.onAuthStateChange((_event,session)=>{
+  if(session?.user){user=session.user;loadApp().catch(e=>console.error('[NEXUS session] app load failed',{name:e?.name??'Error'}))}
+  else if(!user)showApp(false);
+ });
+}catch(e){
+ console.error('[NEXUS session] initialization failed',{name:e?.name??'Error',message:String(e?.message||'unknown').slice(0,160)});
+ showApp(false);
+ const el=$('authMsg');
+ if(el)msg('authMsg','无法读取登录状态，请检查网络后重新登录。',true);
+}
 </script></body></html>
