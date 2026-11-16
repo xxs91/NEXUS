@@ -1,10 +1,7 @@
-name: Build NEXUS Android APK
+name: Build NEXUS Signed Release APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -12,7 +9,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -39,13 +35,62 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Build Android APK
-        run: gradle assembleDebug
+      - name: Restore and validate NEXUS signing key
+        shell: bash
+        env:
+          NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in NEXUS_KEYSTORE_BASE64 NEXUS_KEYSTORE_PASSWORD NEXUS_KEY_ALIAS NEXUS_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "Missing signing secret: $name"; exit 1; fi
+          done
+          KEYSTORE="$RUNNER_TEMP/nexus-release.jks"
+          printf '%s' "$NEXUS_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" >/dev/null
+          echo "NEXUS_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Signing keystore and alias validated."
 
-      - name: Upload APK
+      - name: Build signed Release APK
+        env:
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Verify APK signature matches signing keystore
+        shell: bash
+        env:
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER"
+          KEY_CERT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" | awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')
+          APK_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}')
+          if [[ -z "$KEY_CERT" || -z "$APK_CERT" || "$KEY_CERT" != "$APK_CERT" ]]; then
+            echo "APK certificate does not match the configured release keystore."
+            echo "Keystore SHA-256: ${KEY_CERT:-missing}"
+            echo "APK SHA-256: ${APK_CERT:-missing}"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose "$APK"
+          echo "APK certificate matches the configured keystore."
+          echo "Certificate SHA-256: $APK_CERT"
+          ls -lh "$APK"
+
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: NEXUS-1.0.8-signed-release
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
