@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP=$(find . -maxdepth 1 -type f -name 'NEXUS-*.zip' -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          ZIP=$(find . -maxdepth 1 -type f -name 'NEXUS-*.zip' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
           if [[ -z "$ZIP" ]]; then
             echo "No NEXUS-*.zip found."
             exit 1
@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/nexus-package
           unzip -q "$ZIP_PATH" -d /tmp/nexus-package
-          PROJECT_DIR=$(find /tmp/nexus-package -type f -name package.json -printf '%h\\n' |
+          PROJECT_DIR=$(find /tmp/nexus-package -type f -name package.json -printf '%h\n' |
             while read -r DIR; do
               if [[ -f "$DIR/settings.gradle" || -f "$DIR/settings.gradle.kts" ]] && [[ -f "$DIR/app/build.gradle" ]] && [[ -d "$DIR/app/src/main" ]]; then
                 echo "$DIR"
