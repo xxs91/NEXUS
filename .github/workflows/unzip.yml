@@ -53,15 +53,15 @@ jobs:
           fi
           echo "Project directory: $PROJECT_DIR"
           # Keep the repository-controlled version and release-signing configuration.
-          rsync -a --exclude='.git/' --exclude='.github/' --exclude='/app/build.gradle' --exclude='/package.json' "$PROJECT_DIR/" ./
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='/app/build.gradle' --exclude='/package.json' --exclude='/index.html' --exclude='/dist/index.html' --exclude='/app/src/main/assets/public/index.html' "$PROJECT_DIR/" ./
 
       - name: Verify controlled version and signing configuration
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const p=require('./package.json'); if(p.version!=='1.0.8') process.exit(1); console.log('Package version:',p.version)"
-          grep -q 'versionCode 9' app/build.gradle
-          grep -q 'versionName "1.0.8"' app/build.gradle
+          node -e "const p=require('./package.json'); if(p.version!=='1.0.9') process.exit(1); console.log('Package version:',p.version)"
+          grep -q 'versionCode 10' app/build.gradle
+          grep -q 'versionName "1.0.9"' app/build.gradle
           grep -q 'signingConfigs.release' app/build.gradle
           echo "Android version and release signing configuration verified."
 
@@ -168,7 +168,7 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-1.0.8-signed-release
+          name: NEXUS-1.0.9-signed-release
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
