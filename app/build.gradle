@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+// Release signing is enabled only when the CI signing environment is present.
+// The CI workflow validates the keystore, passwords and alias before building.
+def nexusKeystorePath = System.getenv('NEXUS_KEYSTORE_PATH')
+def nexusKeystorePassword = System.getenv('NEXUS_KEYSTORE_PASSWORD')
+def nexusKeyAlias = System.getenv('NEXUS_KEY_ALIAS')
+def nexusKeyPassword = System.getenv('NEXUS_KEY_PASSWORD')
+def nexusSigningEnabled = nexusKeystorePath && nexusKeystorePassword && nexusKeyAlias && nexusKeyPassword
+
 android {
     namespace 'com.nexus.app'
     compileSdk 36
@@ -10,8 +18,28 @@ android {
         applicationId 'com.nexus.app'
         minSdk 24
         targetSdk 36
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 9
+        versionName "1.0.8"
+    }
+
+    if (nexusSigningEnabled) {
+        signingConfigs {
+            release {
+                storeFile file(nexusKeystorePath)
+                storePassword nexusKeystorePassword
+                keyAlias nexusKeyAlias
+                keyPassword nexusKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (nexusSigningEnabled) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
     }
 
     compileOptions {
