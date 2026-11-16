@@ -140,12 +140,24 @@ jobs:
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           APKSIGNER=$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
-          KEY_CERT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" | awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')
-          APK_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}')
-          if [[ -z "$KEY_CERT" || -z "$APK_CERT" || "$KEY_CERT" != "$APK_CERT" ]]; then
+          KEYTOOL_OUTPUT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" 2>&1)
+          KEY_CERT=$(printf '%s\\n' "$KEYTOOL_OUTPUT" | grep -i 'SHA256:' | head -1 | sed 's/.*SHA256:[[:space:]]*//' | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          APKSIGNER_OUTPUT=$("$APKSIGNER" verify --print-certs "$APK" 2>&1)
+          echo "apksigner certificate report:"
+          printf '%s\\n' "$APKSIGNER_OUTPUT"
+          APK_CERT=$(printf '%s\\n' "$APKSIGNER_OUTPUT" | grep -iE 'SHA-?256.*digest|digest.*SHA-?256' | head -1 | sed 's/.*:[[:space:]]*//' | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          if [[ ! "$KEY_CERT" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Could not extract a valid SHA-256 fingerprint from the keystore report."
+            exit 1
+          fi
+          if [[ ! "$APK_CERT" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Could not extract a valid SHA-256 fingerprint from the APK report."
+            exit 1
+          fi
+          if [[ "$KEY_CERT" != "$APK_CERT" ]]; then
             echo "APK certificate does not match the configured release keystore."
-            echo "Keystore SHA-256: ${KEY_CERT:-missing}"
-            echo "APK SHA-256: ${APK_CERT:-missing}"
+            echo "Keystore SHA-256: $KEY_CERT"
+            echo "APK SHA-256: $APK_CERT"
             exit 1
           fi
           "$APKSIGNER" verify --verbose "$APK"
