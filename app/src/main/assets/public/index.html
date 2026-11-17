@@ -61,21 +61,6 @@ body.dark-mode .status{color:#55c98a}
 body.dark-mode .selected-check{color:#f2f3f5}
 body.dark-mode .back-line{color:#f2f3f5}
 
-/* The dot is a separately drawn full circle, never a font punctuation glyph. */
-#nexusSplash .splash-mark{position:relative;display:inline-block;overflow:visible;clip-path:inset(100% -0.18em 0 0)}
-
-
-@media(prefers-reduced-motion:reduce){
-  #nexusSplash .splash-mark{clip-path:none}
-}
-/* NEXUS splash: exact N mark, bottom-up emergence, no subtitle or dot */
-#nexusSplash{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:1;visibility:visible;transition:opacity .48s ease,visibility .48s ease;}
-#nexusSplash.done{opacity:0;visibility:hidden;pointer-events:none;}
-#nexusSplash .splash-mark{display:block;height:clamp(112px,30vw,154px);width:auto;max-width:80vw;object-fit:contain;object-position:center;image-rendering:auto;opacity:.12;transform:translate3d(0,30px,0);clip-path:inset(100% 0 0 0);animation:none;}#nexusSplash.ready .splash-mark{animation:nexusRise 1.95s cubic-bezier(.22,.72,.18,1) 0s forwards;}
-@keyframes nexusRise{0%{clip-path:inset(100% 0 0 0);transform:translate3d(0,30px,0);opacity:.12;}32%{opacity:.34;}68%{opacity:.68;}100%{clip-path:inset(0 0 0 0);transform:translate3d(0,0,0);opacity:1;}}
-@media(prefers-reduced-motion:reduce){#nexusSplash .splash-mark{animation:none;opacity:1;transform:none;clip-path:none;}#nexusSplash{transition:none;}}
-
-
 /* Security protocol preference controls */
 .security-card{margin-top:14px}
 .protocol-options{display:grid;gap:10px;margin-top:14px}
@@ -87,7 +72,7 @@ body.dark-mode .back-line{color:#f2f3f5}
 .security-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(128,128,128,.08)}
 .dark-mode .protocol-option{border-color:rgba(255,255,255,.16)}
 .dark-mode .protocol-option:has(input:checked){border-color:rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8)}
-</style></head><body><div id="nexusSplash" aria-label="NEXUS 正在启动"><img class="splash-mark" src="nexus-mark.png" alt="N"></div><script>(()=>{const s=document.getElementById("nexusSplash");const m=s?.querySelector(".splash-mark");if(!s)return;let started=false;const start=()=>{if(started)return;started=true;s.classList.add("ready");window.setTimeout(()=>{s.classList.add("done");window.setTimeout(()=>s.remove(),500)},2850)};if(!m)return start();if(m.complete&&m.naturalWidth>0)start();else{m.addEventListener("load",start,{once:true});m.addEventListener("error",start,{once:true})}})();</script><div class="wrap"><header class="top"><div><div class="brand">N</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
+</style></head><body><div class="wrap"><header class="top"><div><div class="brand">N</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
 <section id="authView" class="card hero"><div class="tag">WELCOME TO NEXUS</div><h1>稳定 · 高速 · 安全</h1><p class="muted">登录后进入连接主页，账户与订阅功能可在个人中心管理。</p><div class="grid"><label class="field"><span>邮箱</span><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label><label class="field"><span>密码</span><input id="password" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><label class="field" id="nickWrap"><span>昵称（注册时填写）</span><input id="nickname" placeholder="你的昵称"></label></div><div class="actions"><button id="loginBtn">登录</button><button id="signupBtn" class="secondary">注册账户</button><button id="resetBtn" class="ghost">找回密码</button></div><div id="authMsg" class="notice hidden"></div><p class="small muted">注册后请到邮箱完成验证，再返回登录。若收不到邮件，请检查垃圾邮件文件夹。</p></section>
 <section id="appView" class="hidden">
 <section id="screen-home" class="mainScreen">
@@ -120,7 +105,7 @@ body.dark-mode .back-line{color:#f2f3f5}
 <section id="tab-plans" class="tabPanel hidden"><div class="section-title">服务套餐</div><div id="plansList" class="grid"><div class="card muted">正在加载套餐…</div></div></section>
 <section id="tab-orders" class="tabPanel hidden"><div class="section-title">我的订单</div><div class="card" id="ordersList">正在加载订单…</div></section>
 <section id="tab-profile" class="tabPanel hidden"><div class="section-title">个人资料</div><div class="card"><label class="field"><span>昵称</span><input id="profileNick" maxlength="40"></label><button id="saveProfile">保存资料</button><div id="profileMsg" class="notice hidden"></div></div></section>
-<section id="tab-about" class="tabPanel hidden"><div class="section-title">关于 NEXUS</div><div class="card hero"><div class="tag">APPLICATION INFORMATION</div><h1>NEXUS</h1><p class="muted">版本信息与安装包签名核验</p><div class="row"><span>应用版本</span><b>1.0.10</b></div><div class="row"><span>Version Code</span><b>11</b></div><div class="row"><span>构建类型</span><b>Release</b></div></div><div class="card"><div class="section-title">签名证书</div><div class="small muted">本版本签名证书 SHA-256 指纹</div><p style="font-family:monospace;font-size:12px;line-height:1.7;overflow-wrap:anywhere;margin:12px 0">6321bc8dac6a5b79afeb18e077269192a6f735786d58877ed40262b8098a19ab</p><div class="notice success">此指纹由 GitHub Actions 构建流程与 Release APK 实际证书比对确认。</div></div><div class="foot">NEXUS · DIGITAL SERVICE</div></section>
+<section id="tab-about" class="tabPanel hidden"><div class="section-title">关于 NEXUS</div><div class="card hero"><div class="tag">APPLICATION INFORMATION</div><h1>NEXUS</h1><p class="muted">版本信息与安装包签名核验</p><div class="row"><span>应用版本</span><b>1.0.11</b></div><div class="row"><span>Version Code</span><b>12</b></div><div class="row"><span>构建类型</span><b>Release</b></div></div><div class="card"><div class="section-title">签名证书</div><div class="small muted">本版本签名证书 SHA-256 指纹</div><p style="font-family:monospace;font-size:12px;line-height:1.7;overflow-wrap:anywhere;margin:12px 0">6321bc8dac6a5b79afeb18e077269192a6f735786d58877ed40262b8098a19ab</p><div class="notice success">此指纹由 GitHub Actions 构建流程与 Release APK 实际证书比对确认。</div></div><div class="foot">NEXUS · DIGITAL SERVICE</div></section>
 <section id="tab-admin" class="tabPanel hidden"><div class="section-title">管理后台</div><div class="notice">仅授予数据库中管理员名单内的账户访问权。不要把管理员权限开放给普通用户。</div><div class="card"><h3>待处理订单</h3><div id="adminOrders">加载中…</div></div><div class="card"><h3>用户订阅管理</h3><p class="small muted">输入用户 UID 与套餐 ID，为该用户开通订阅。请仅处理已核实的订单。</p><label class="field"><span>用户 UID</span><input id="grantUid" placeholder="Auth User UUID"></label><label class="field"><span>套餐 ID</span><input id="grantPlan" placeholder="套餐 UUID"></label><button id="grantBtn">确认开通订阅</button><div id="adminMsg" class="notice hidden"></div></div></section>
 <div class="actions"><button id="logoutBtn" class="secondary">退出登录</button></div>
 </section>
@@ -130,7 +115,7 @@ body.dark-mode .back-line{color:#f2f3f5}
 <button class="bottom-item" data-screen="settings"><span class="nav-icon">⚙</span><span>设置</span></button>
 </nav>
 </section><footer class="foot">NEXUS · DIGITAL SERVICE</footer></div>
-<script type="module">
+<script>if(window.NexusNativeSplash){window.NexusNativeSplash.pageReady();}</script><script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://nxztglauevgpheslgqai.supabase.co';
 const SUPABASE_KEY='sb_publishable_GvWAP-TRle1JOk6w4Oh2hg_ygaf_Bi3';
