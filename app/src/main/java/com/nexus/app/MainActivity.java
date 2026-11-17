@@ -13,6 +13,11 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
+import android.view.Window;
+import android.view.WindowManager;
+import android.graphics.drawable.ColorDrawable;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
@@ -33,9 +38,31 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Paint the launch system bars before the first Activity frame to avoid a dark top strip.
+        configureLaunchSystemBars();
         registerPlugin(NativeSplashPlugin.class);
         super.onCreate(savedInstanceState);
+        // Capacitor may adjust window flags during initialization; re-apply the launch appearance.
+        configureLaunchSystemBars();
         showNativeSplash();
+    }
+
+    private void configureLaunchSystemBars() {
+        Window window = getWindow();
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
+            | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.setStatusBarColor(Color.WHITE);
+        window.setNavigationBarColor(Color.WHITE);
+        window.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+        WindowCompat.setDecorFitsSystemWindows(window, true);
+        View decor = window.getDecorView();
+        decor.setBackgroundColor(Color.WHITE);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+        if (controller != null) {
+            controller.setAppearanceLightStatusBars(true);
+            controller.setAppearanceLightNavigationBars(true);
+        }
     }
 
     private void showNativeSplash() {
