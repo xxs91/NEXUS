@@ -2,7 +2,7 @@
 <resources>
     <style name="AppTheme" parent="@style/NexusBaseTheme">
         <item name="android:windowSplashScreenBackground">#FFFFFF</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="android:windowSplashScreenAnimationDuration">250</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
 </resources>
