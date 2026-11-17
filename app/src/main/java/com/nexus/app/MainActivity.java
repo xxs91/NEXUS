@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -17,6 +16,8 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.graphics.drawable.ColorDrawable;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -38,24 +39,40 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Paint the launch system bars before the first Activity frame to avoid a dark top strip.
-        configureLaunchSystemBars();
+        // Establish the launch window before WebView/Capacitor creates its first frame.
+        configureLaunchWindow();
         registerPlugin(NativeSplashPlugin.class);
         super.onCreate(savedInstanceState);
-        // Capacitor may adjust window flags during initialization; re-apply the launch appearance.
-        configureLaunchSystemBars();
+
+        // WebView can initially expose its default black surface while Chromium starts.
+        // Give both the WebView and its host an explicit opaque light backing surface.
+        configureLaunchWindow();
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().setBackgroundColor(Color.WHITE);
+            bridge.getWebView().setBackgroundResource(android.R.color.white);
+            bridge.getWebView().setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
         showNativeSplash();
     }
 
-    private void configureLaunchSystemBars() {
+    private void configureLaunchWindow() {
         Window window = getWindow();
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
             | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(Color.WHITE);
+
+        // Android 15+ enforces edge-to-edge for targetSdk 35+. Draw a known white
+        // surface behind the transparent status bar instead of relying on the
+        // deprecated statusBarColor behavior.
+        window.setStatusBarColor(Color.TRANSPARENT);
         window.setNavigationBarColor(Color.WHITE);
         window.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
-        WindowCompat.setDecorFitsSystemWindows(window, true);
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
+
+        WindowCompat.setDecorFitsSystemWindows(window, false);
         View decor = window.getDecorView();
         decor.setBackgroundColor(Color.WHITE);
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
@@ -66,15 +83,28 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void showNativeSplash() {
-        View content = findViewById(android.R.id.content);
-        if (!(content instanceof ViewGroup)) return;
+        View decor = getWindow().getDecorView();
+        if (!(decor instanceof ViewGroup)) return;
 
         nativeSplash = new FrameLayout(this);
         nativeSplash.setBackgroundColor(Color.WHITE);
         nativeSplash.setClickable(true);
-        ((ViewGroup) content).addView(nativeSplash,
+        nativeSplash.setFocusable(true);
+        nativeSplash.setClipToPadding(false);
+
+        // Attach to the window decor, not android.R.id.content. This makes the
+        // splash background cover the status-bar inset as well as the WebView.
+        ((ViewGroup) decor).addView(nativeSplash,
             new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        ViewCompat.setOnApplyWindowInsetsListener(nativeSplash, (view, insets) -> {
+            androidx.core.graphics.Insets bars =
+                insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(0, bars.top, 0, bars.bottom);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(nativeSplash);
 
         Bitmap bitmap = null;
         try (InputStream input = getAssets().open("public/nexus-mark.png")) {
@@ -82,7 +112,7 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) { }
 
         if (bitmap == null) {
-            // Keep the native launch surface white if the image asset cannot be decoded.
+            // Keep the entire launch window white if the image cannot be decoded.
             return;
         }
 
@@ -108,6 +138,7 @@ public class MainActivity extends BridgeActivity {
             mark.setClipBounds(new Rect(0, h, w, h));
             animationStartedAt = SystemClock.elapsedRealtime();
 
+            // Preserve the original N reveal: duration, easing, lift and alpha curve.
             ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
             animator.setDuration(1950L);
             animator.setInterpolator(new PathInterpolator(0.22f, 0.72f, 0.18f, 1f));
