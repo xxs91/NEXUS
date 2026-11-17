@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - '*.zip'
-      - '.github/workflows/unzip.yml'
   workflow_dispatch:
 
 permissions:
@@ -53,7 +52,7 @@ jobs:
           fi
           echo "Project directory: $PROJECT_DIR"
           # Keep the repository-controlled version and release-signing configuration.
-          rsync -a --exclude='.git/' --exclude='.github/' --exclude='/app/build.gradle' --exclude='/package.json' --exclude='/index.html' --exclude='/dist/index.html' --exclude='/app/src/main/assets/public/index.html' "$PROJECT_DIR/" ./
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='/app/build.gradle' --exclude='/package.json' --exclude='/index.html' --exclude='/dist/index.html' --exclude='/app/src/main/assets/public/index.html' --exclude='/app/src/main/AndroidManifest.xml' --exclude='/app/src/main/res/values/styles.xml' --exclude='/app/src/main/res/values-v31/styles.xml' --exclude='/app/src/main/res/drawable/nexus_launch_background.xml' "$PROJECT_DIR/" ./
 
       - name: Verify controlled version and signing configuration
         shell: bash
