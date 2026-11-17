@@ -12,6 +12,7 @@
             android:name="com.nexus.app.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:theme="@style/NexusStartingTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
