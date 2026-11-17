@@ -7,6 +7,11 @@ on:
     paths:
       - '*.zip'
       - 'app/**'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'package.json'
+      - '.github/workflows/unzip.yml'
   workflow_dispatch:
 
 permissions:
@@ -59,9 +64,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const p=require('./package.json'); if(p.version!=='1.0.14') process.exit(1); console.log('Package version:',p.version)"
-          grep -q 'versionCode 15' app/build.gradle
-          grep -q 'versionName "1.0.14"' app/build.gradle
+          node -e "const p=require('./package.json'); if(p.version!=='1.0.17') process.exit(1); console.log('Package version:',p.version)"
+          grep -q 'versionCode 18' app/build.gradle
+          grep -q 'versionName "1.0.17"' app/build.gradle
           grep -q 'signingConfigs.release' app/build.gradle
           echo "Android version and release signing configuration verified."
 
@@ -168,7 +173,7 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-1.0.14-signed-release
+          name: NEXUS-1.0.17-test-no-N-animation
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
