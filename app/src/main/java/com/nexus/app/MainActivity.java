@@ -36,6 +36,7 @@ public class MainActivity extends BridgeActivity {
     private long animationStartedAt;
     private boolean pageReady;
     private boolean splashDismissScheduled;
+    private int originalSystemUiVisibility;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -88,6 +89,13 @@ public class MainActivity extends BridgeActivity {
     private void showNativeSplash() {
         View decor = getWindow().getDecorView();
         if (!(decor instanceof ViewGroup)) return;
+
+        // Hide the system status bar while the splash owns the entire display.
+        // This prevents Android 16 from drawing its transient launch surface above
+        // the white animation layer. Restore it only after the splash has faded.
+        View decorView = getWindow().getDecorView();
+        originalSystemUiVisibility = decorView.getSystemUiVisibility();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         nativeSplash = new FrameLayout(this);
         nativeSplash.setBackgroundColor(Color.WHITE);
