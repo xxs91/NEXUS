@@ -2,6 +2,16 @@ name: Build NEXUS Signed Release APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'index.html'
+      - 'dist/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
@@ -90,7 +100,7 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-1.0.9-signed-release
+          name: NEXUS-1.0.10-signed-release
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
