@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Keep the native launch window visually continuous with the NEXUS web splash. -->
+    <!-- Normal application theme used immediately after the system splash. -->
     <style name="NexusBaseTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/nexus_launch_background</item>
         <item name="android:colorAccent">#111111</item>
@@ -10,5 +10,19 @@
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+
     <style name="AppTheme" parent="@style/NexusBaseTheme" />
+
+    <!-- Dedicated AndroidX/system launch theme. It switches to AppTheme
+         before MainActivity creates the Capacitor WebView. -->
+    <style name="NexusStartingTheme" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>

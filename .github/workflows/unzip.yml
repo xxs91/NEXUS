@@ -60,9 +60,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const p=require('./package.json'); if(p.version!=='1.0.18') process.exit(1); console.log('Package version:',p.version)"
-          grep -q 'versionCode 19' app/build.gradle
-          grep -q 'versionName "1.0.18"' app/build.gradle
+          node -e "const p=require('./package.json'); if(p.version!=='1.0.19') process.exit(1); console.log('Package version:',p.version)"
+          grep -q 'versionCode 20' app/build.gradle
+          grep -q 'versionName "1.0.19"' app/build.gradle
           grep -q 'signingConfigs.release' app/build.gradle
           echo "Android version and release signing configuration verified."
 
@@ -169,7 +169,7 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-1.0.18-android16-statusbar-fix
+          name: NEXUS-1.0.19-android16-statusbar-fix
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30

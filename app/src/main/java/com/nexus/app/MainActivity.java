@@ -18,6 +18,7 @@ import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
@@ -38,6 +39,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Complete the AndroidX/system splash handoff before the Activity is created.
+        SplashScreen.installSplashScreen(this);
+
         // Set the launch window background before Capacitor creates its WebView.
         configureLaunchWindow();
         registerPlugin(NativeSplashPlugin.class);
