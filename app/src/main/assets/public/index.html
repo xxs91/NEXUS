@@ -72,7 +72,50 @@ body.dark-mode .back-line{color:#f2f3f5}
 .security-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(128,128,128,.08)}
 .dark-mode .protocol-option{border-color:rgba(255,255,255,.16)}
 .dark-mode .protocol-option:has(input:checked){border-color:rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8)}
-</style></head><body><script>if(window.NexusNativeSplash){window.NexusNativeSplash.pageReady();}</script><script type="module">
+</style></head><body><div class="wrap"><header class="top"><div><div class="brand">N</div></div><button id="topLogout" class="ghost hidden">退出登录</button></header>
+<section id="authView" class="card hero"><div class="tag">WELCOME TO NEXUS</div><h1>稳定 · 高速 · 安全</h1><p class="muted">登录后进入连接主页，账户与订阅功能可在个人中心管理。</p><div class="grid"><label class="field"><span>邮箱</span><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label><label class="field"><span>密码</span><input id="password" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><label class="field" id="nickWrap"><span>昵称（注册时填写）</span><input id="nickname" placeholder="你的昵称"></label></div><div class="actions"><button id="loginBtn">登录</button><button id="signupBtn" class="secondary">注册账户</button><button id="resetBtn" class="ghost">找回密码</button></div><div id="authMsg" class="notice hidden"></div><p class="small muted">注册后请到邮箱完成验证，再返回登录。若收不到邮件，请检查垃圾邮件文件夹。</p></section>
+<section id="appView" class="hidden">
+<section id="screen-home" class="mainScreen">
+<div class="connect-card" id="nexusConnect">
+ <div class="connect-kicker">NEXUS NETWORK</div><div class="connect-title">连接，更简单</div><div class="connect-sub">选择一个地区，查看可用节点</div>
+ <div class="connect-ring" id="connectRing"><div class="connect-symbol">N.</div></div>
+ <div class="connect-state" id="connectState">尚未连接</div><div class="connect-detail" id="connectDetail">准备就绪</div>
+ <button class="connect-main-btn" id="connectBtn">连接</button>
+ <div class="connect-region" id="openNodes"><div><strong id="selectedRegion">🇩🇪 德国</strong><small id="selectedNode">自动选择 · Frankfurt 01</small></div><span class="arrow">›</span></div>
+ <div class="connect-meta"><span>◷ <b id="nodeLatency">—</b> 延迟</span><span>◇ 节点选择</span></div>
+ <div class="demo-note">界面演示：当前仅展示交互与状态动画，尚未连接真实网络服务。</div>
+</div>
+<div class="node-sheet hidden" id="nodeSheet"><div class="node-panel"><div class="sheet-head"><div><div class="connect-kicker">LOCATION</div><h2 id="sheetTitle">选择地区</h2></div><button class="sheet-close" id="closeNodes">×</button></div><div id="countryList"></div><div id="nodeList" class="hidden"></div></div></div>
+</section>
+<section id="screen-country" class="mainScreen hidden">
+<div class="screen-heading"><div class="tag">LOCATIONS</div><h1>选择国家</h1><p class="muted">选择地区后查看可选节点</p></div>
+<div class="card" id="countryPageList"></div>
+</section>
+<section id="screen-settings" class="mainScreen hidden">
+<div class="settings-heading"><div class="tag">YOUR ACCOUNT</div><h2>设置</h2></div><nav class="tabs"><button class="active" data-tab="home">个人中心</button><button data-tab="plans">服务套餐</button><button data-tab="orders">我的订单</button><button data-tab="profile">个人资料</button><button data-tab="about">关于 NEXUS</button><button data-tab="admin" id="adminTab" class="hidden">管理后台</button></nav>
+<section id="tab-home" class="tabPanel"><div class="card hero"><div class="tag">ACCOUNT OVERVIEW</div><h1 id="welcome">账户中心</h1><div class="muted" id="userEmail"></div><div class="row"><span>账户状态</span><b id="accountStatus" class="status">—</b></div><div class="row"><span>当前订阅</span><b id="subStatus">暂无有效订阅</b></div><div class="row"><span>到期时间</span><b id="subEnd">—</b></div></div><div class="grid"><div class="card"><div class="muted">账户昵称</div><h2 id="homeNick">—</h2><div class="small muted">你的 NEXUS 账户</div></div><div class="card"><div class="muted">订阅状态</div><h2 id="homeSub">未订阅</h2><div class="small muted">订阅由管理端确认生效</div></div></div><div class="card appearance-card"><div class="section-title">外观模式</div><p class="muted small">选择适合当前环境的显示方式</p><label class="field"><span>主题</span><select id="themeMode" aria-label="外观模式"><option value="system">跟随系统</option><option value="light">浅色模式</option><option value="dark">深色模式</option></select></label></div><div class="card security-card" id="connectionSecurity">
+<div class="section-title">安全连接方式</div>
+<p class="muted small">选择你希望使用的协议。此设置仅保存偏好；服务器配置及 VPN 引擎接入完成前，不会建立真实 VPN 连接。</p>
+<div class="protocol-options" role="radiogroup" aria-label="安全连接协议">
+<label class="protocol-option"><input type="radio" name="vpnProtocol" value="wireguard"><span class="protocol-copy"><b>WireGuard</b><small>现代 VPN 协议 · 需要已配置的服务器</small></span></label>
+<label class="protocol-option"><input type="radio" name="vpnProtocol" value="openvpn"><span class="protocol-copy"><b>OpenVPN</b><small>兼容性 VPN 协议 · 需要已配置的服务器</small></span></label>
+</div>
+<div class="security-note" id="protocolStatus" role="status">当前为偏好设置，尚未连接 VPN 服务器。</div>
+</div><div class="notice">当前版本暂不接入在线支付。你可以浏览套餐并提交订单申请，管理员确认后更新订阅状态。</div></section>
+<section id="tab-plans" class="tabPanel hidden"><div class="section-title">服务套餐</div><div id="plansList" class="grid"><div class="card muted">正在加载套餐…</div></div></section>
+<section id="tab-orders" class="tabPanel hidden"><div class="section-title">我的订单</div><div class="card" id="ordersList">正在加载订单…</div></section>
+<section id="tab-profile" class="tabPanel hidden"><div class="section-title">个人资料</div><div class="card"><label class="field"><span>昵称</span><input id="profileNick" maxlength="40"></label><button id="saveProfile">保存资料</button><div id="profileMsg" class="notice hidden"></div></div></section>
+<section id="tab-about" class="tabPanel hidden"><div class="section-title">关于 NEXUS</div><div class="card hero"><div class="tag">APPLICATION INFORMATION</div><h1>NEXUS</h1><p class="muted">版本信息与安装包签名核验</p><div class="row"><span>应用版本</span><b>1.0.11</b></div><div class="row"><span>Version Code</span><b>12</b></div><div class="row"><span>构建类型</span><b>Release</b></div></div><div class="card"><div class="section-title">签名证书</div><div class="small muted">本版本签名证书 SHA-256 指纹</div><p style="font-family:monospace;font-size:12px;line-height:1.7;overflow-wrap:anywhere;margin:12px 0">6321bc8dac6a5b79afeb18e077269192a6f735786d58877ed40262b8098a19ab</p><div class="notice success">此指纹由 GitHub Actions 构建流程与 Release APK 实际证书比对确认。</div></div><div class="foot">NEXUS · DIGITAL SERVICE</div></section>
+<section id="tab-admin" class="tabPanel hidden"><div class="section-title">管理后台</div><div class="notice">仅授予数据库中管理员名单内的账户访问权。不要把管理员权限开放给普通用户。</div><div class="card"><h3>待处理订单</h3><div id="adminOrders">加载中…</div></div><div class="card"><h3>用户订阅管理</h3><p class="small muted">输入用户 UID 与套餐 ID，为该用户开通订阅。请仅处理已核实的订单。</p><label class="field"><span>用户 UID</span><input id="grantUid" placeholder="Auth User UUID"></label><label class="field"><span>套餐 ID</span><input id="grantPlan" placeholder="套餐 UUID"></label><button id="grantBtn">确认开通订阅</button><div id="adminMsg" class="notice hidden"></div></div></section>
+<div class="actions"><button id="logoutBtn" class="secondary">退出登录</button></div>
+</section>
+<nav class="bottom-nav" aria-label="主导航">
+<button class="bottom-item active" data-screen="home"><span class="nav-icon">⌂</span><span>首页</span></button>
+<button class="bottom-item" data-screen="country"><span class="nav-icon">◎</span><span>国家</span></button>
+<button class="bottom-item" data-screen="settings"><span class="nav-icon">⚙</span><span>设置</span></button>
+</nav>
+</section><footer class="foot">NEXUS · DIGITAL SERVICE</footer></div>
+<script>if(window.NexusNativeSplash){window.NexusNativeSplash.pageReady();}</script><script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://nxztglauevgpheslgqai.supabase.co';
 const SUPABASE_KEY='sb_publishable_GvWAP-TRle1JOk6w4Oh2hg_ygaf_Bi3';
