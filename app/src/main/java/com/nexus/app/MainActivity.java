@@ -33,7 +33,6 @@ public class MainActivity extends BridgeActivity {
     private static final long ORIGINAL_FADE_MS = 480L;
     private FrameLayout nativeSplash;
     private ImageView mark;
-    private View statusBarWhiteCover;
     private long animationStartedAt;
     private boolean pageReady;
     private boolean splashDismissScheduled;
@@ -80,6 +79,9 @@ public class MainActivity extends BridgeActivity {
         if (controller != null) {
             controller.setAppearanceLightStatusBars(true);
             controller.setAppearanceLightNavigationBars(true);
+            // Suppress the OS status-bar surface during the native splash. A decor
+            // child cannot cover that system-owned surface and may spill into content.
+            controller.hide(WindowInsetsCompat.Type.statusBars());
         }
     }
 
@@ -99,31 +101,6 @@ public class MainActivity extends BridgeActivity {
         decorGroup.addView(nativeSplash,
             new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                                        ViewGroup.LayoutParams.MATCH_PARENT));
-
-        // A dedicated opaque white cap sits at the very top of the app window.
-        // It is deliberately a separate, last-added native view so later WebView
-        // frames cannot paint a dark strip over the launch status-bar backdrop.
-        statusBarWhiteCover = new View(this);
-        statusBarWhiteCover.setBackgroundColor(Color.WHITE);
-        statusBarWhiteCover.setClickable(false);
-        statusBarWhiteCover.setFocusable(false);
-        statusBarWhiteCover.setElevation(10000f);
-        decorGroup.addView(statusBarWhiteCover, new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP));
-
-        ViewCompat.setOnApplyWindowInsetsListener(nativeSplash, (view, insets) -> {
-            androidx.core.graphics.Insets bars =
-                insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            view.setPadding(0, bars.top, 0, bars.bottom);
-            if (statusBarWhiteCover != null) {
-                ViewGroup.LayoutParams coverParams = statusBarWhiteCover.getLayoutParams();
-                coverParams.height = bars.top;
-                statusBarWhiteCover.setLayoutParams(coverParams);
-                statusBarWhiteCover.setVisibility(bars.top > 0 ? View.VISIBLE : View.GONE);
-            }
-            return insets;
-        });
-        ViewCompat.requestApplyInsets(nativeSplash);
 
         Bitmap bitmap = null;
         try (InputStream input = getAssets().open("public/nexus-mark.png")) {
@@ -199,13 +176,14 @@ public class MainActivity extends BridgeActivity {
                 .withEndAction(() -> {
                     ViewGroup parent = (ViewGroup) nativeSplash.getParent();
                     if (parent != null) parent.removeView(nativeSplash);
-                    if (statusBarWhiteCover != null) {
-                        ViewGroup coverParent = (ViewGroup) statusBarWhiteCover.getParent();
-                        if (coverParent != null) coverParent.removeView(statusBarWhiteCover);
-                        statusBarWhiteCover = null;
-                    }
                     nativeSplash = null;
                     mark = null;
+                    // Restore the real system status bar only after the splash is gone.
+                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
+                        getWindow(), getWindow().getDecorView());
+                    if (controller != null) {
+                        controller.show(WindowInsetsCompat.Type.statusBars());
+                    }
                 })
                 .start();
         }, wait);
