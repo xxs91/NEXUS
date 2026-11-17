@@ -32,7 +32,6 @@ public class MainActivity extends BridgeActivity {
     private static final long ORIGINAL_SPLASH_HOLD_MS = 2850L;
     private static final long ORIGINAL_FADE_MS = 480L;
     private FrameLayout nativeSplash;
-    private ImageView mark;
     private long animationStartedAt;
     private boolean pageReady;
     private boolean splashDismissScheduled;
@@ -106,52 +105,10 @@ public class MainActivity extends BridgeActivity {
         });
         ViewCompat.requestApplyInsets(nativeSplash);
 
-        Bitmap bitmap = null;
-        try (InputStream input = getAssets().open("public/nexus-mark.png")) {
-            bitmap = BitmapFactory.decodeStream(input);
-        } catch (Exception ignored) { }
-
-        if (bitmap == null) {
-            // Keep the entire launch window white if the image cannot be decoded.
-            return;
-        }
-
-        mark = new ImageView(this);
-        mark.setImageBitmap(bitmap);
-        mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-
-        float density = getResources().getDisplayMetrics().density;
-        float widthDp = getResources().getDisplayMetrics().widthPixels / density;
-        int targetHeight = Math.round(Math.max(112f, Math.min(154f, widthDp * 0.30f)) * density);
-        int targetWidth = Math.round(targetHeight * (bitmap.getWidth() / (float) bitmap.getHeight()));
-
-        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
-            targetWidth, targetHeight, Gravity.CENTER);
-        nativeSplash.addView(mark, imageParams);
-
-        mark.setAlpha(0.12f);
-        mark.setTranslationY(30f * density);
-        mark.post(() -> {
-            if (mark == null || nativeSplash == null) return;
-            final int w = mark.getWidth();
-            final int h = mark.getHeight();
-            mark.setClipBounds(new Rect(0, h, w, h));
-            animationStartedAt = SystemClock.elapsedRealtime();
-
-            // Preserve the original N reveal: duration, easing, lift and alpha curve.
-            ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-            animator.setDuration(1950L);
-            animator.setInterpolator(new PathInterpolator(0.22f, 0.72f, 0.18f, 1f));
-            animator.addUpdateListener(value -> {
-                float f = (Float) value.getAnimatedValue();
-                int top = Math.max(0, Math.min(h, Math.round(h * (1f - f))));
-                mark.setClipBounds(new Rect(0, top, w, h));
-                mark.setTranslationY(30f * density * (1f - f));
-                mark.setAlpha(splashAlpha(f));
-            });
-            animator.start();
-            maybeDismissSplash();
-        });
+        // Diagnostic build: keep the native white splash and its normal hold/fade,
+        // but omit the N image and all N animation work to isolate the startup flash.
+        animationStartedAt = SystemClock.elapsedRealtime();
+        maybeDismissSplash();
     }
 
     private float splashAlpha(float f) {
@@ -181,7 +138,6 @@ public class MainActivity extends BridgeActivity {
                     ViewGroup parent = (ViewGroup) nativeSplash.getParent();
                     if (parent != null) parent.removeView(nativeSplash);
                     nativeSplash = null;
-                    mark = null;
                 })
                 .start();
         }, wait);
