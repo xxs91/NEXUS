@@ -86,11 +86,18 @@ jobs:
           AAPT=$(find "$SDK/build-tools" -type f -name aapt | sort -V | tail -1)
           test -n "$APKSIGNER"
           test -n "$AAPT"
-          KEY_CERT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" | awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')
-          APK_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}')
+          KEY_CERT=$(keytool -exportcert -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" 2>/dev/null | sha256sum | awk '{print tolower($1)}')
+          APK_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{gsub(":","",$2); print tolower($2); exit}')
           EXPECTED_CERT="6321bc8dac6a5b79afeb18e077269192a6f735786d58877ed40262b8098a19ab"
-          if [[ -z "$KEY_CERT" || -z "$APK_CERT" || "$KEY_CERT" != "$APK_CERT" || "$APK_CERT" != "$EXPECTED_CERT" ]]; then
-            echo "Release APK signing certificate mismatch."
+          echo "Configured keystore certificate SHA-256: $KEY_CERT"
+          echo "Built APK certificate SHA-256:          $APK_CERT"
+          echo "Previously recorded certificate SHA-256: $EXPECTED_CERT"
+          if [[ -z "$KEY_CERT" || -z "$APK_CERT" || "$KEY_CERT" != "$APK_CERT" ]]; then
+            echo "APK was not signed by the configured original keystore."
+            exit 1
+          fi
+          if [[ "$APK_CERT" != "$EXPECTED_CERT" ]]; then
+            echo "Configured keystore does not match the previously recorded certificate fingerprint."
             exit 1
           fi
           "$APKSIGNER" verify --verbose "$APK"
