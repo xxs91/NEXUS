@@ -37,6 +37,7 @@ begin
  if new.id <> old.id or new.user_id <> old.user_id or new.plan_id <> old.plan_id
   or new.amount_label <> old.amount_label or new.created_at <> old.created_at then raise exception 'order details are immutable'; end if;
  if new.status is distinct from old.status and not public.nexus_is_admin() then raise exception 'only administrators can change order status'; end if;
+ if new.status = 'approved' and old.status <> 'approved' and coalesce(current_setting('nexus.approving_order',true),'') <> 'on' then raise exception 'orders must be approved through nexus_approve_order'; end if;
  return new;
 end; $$;
 drop trigger if exists nexus_order_guard on public.orders;
@@ -69,6 +70,7 @@ begin
  if not found then raise exception 'order not found'; end if;
  if v_order.status <> 'pending' then raise exception 'order is not pending'; end if;
  v_subscription_id := public.nexus_grant_subscription(v_order.user_id,v_order.plan_id);
+ perform set_config('nexus.approving_order','on',true);
  update public.orders set status='approved' where id=p_order_id;
  return v_subscription_id;
 end; $$;
