@@ -1,6 +1,9 @@
 name: NEXUS Android Signed Release Build
 
 on:
+  push:
+    branches:
+      - feature/network-foundation-phase1
   pull_request:
     branches:
       - main
