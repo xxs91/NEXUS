@@ -45,6 +45,7 @@ public class MainActivity extends BridgeActivity {
         // Set the launch window background before Capacitor creates its WebView.
         configureLaunchWindow();
         registerPlugin(NativeSplashPlugin.class);
+        registerPlugin(VpnTunnelPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Re-apply icon appearance after the framework has initialized the window.
