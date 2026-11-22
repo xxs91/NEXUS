@@ -1,4 +1,4 @@
-name: NEXUS Android PR Build
+name: NEXUS Android Signed Release Build
 
 on:
   pull_request:
@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-debug-apk:
-    name: Build debug APK
+  build-signed-release:
+    name: Build and verify signed Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -42,21 +42,65 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Verify web assets
+      - name: Build web assets
         run: npm run build
 
-      - name: Build Android debug APK
-        run: gradle --no-daemon assembleDebug
-
-      - name: Verify APK output
+      - name: Restore and validate original NEXUS signing key
+        shell: bash
+        env:
+          NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
         run: |
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          set -euo pipefail
+          for name in NEXUS_KEYSTORE_BASE64 NEXUS_KEYSTORE_PASSWORD NEXUS_KEY_ALIAS NEXUS_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "Missing signing secret: $name"; exit 1; fi
+          done
+          KEYSTORE="$RUNNER_TEMP/nexus-release.jks"
+          printf '%s' "$NEXUS_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" >/dev/null
+          echo "NEXUS_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Original signing keystore validated."
 
-      - name: Upload APK artifact
+      - name: Build signed Release APK
+        env:
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Verify APK uses the original signing certificate and version
+        shell: bash
+        env:
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -type f -name apksigner | sort -V | tail -1)
+          AAPT=$(find "$SDK/build-tools" -type f -name aapt | sort -V | tail -1)
+          test -n "$APKSIGNER"
+          test -n "$AAPT"
+          KEY_CERT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE_PATH" -storepass "$NEXUS_KEYSTORE_PASSWORD" -alias "$NEXUS_KEY_ALIAS" | awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')
+          APK_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}')
+          EXPECTED_CERT="6321bc8dac6a5b79afeb18e077269192a6f735786d58877ed40262b8098a19ab"
+          if [[ -z "$KEY_CERT" || -z "$APK_CERT" || "$KEY_CERT" != "$APK_CERT" || "$APK_CERT" != "$EXPECTED_CERT" ]]; then
+            echo "Release APK signing certificate mismatch."
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose "$APK"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.nexus.app' versionCode='22' versionName='1.0.21'"
+          echo "Verified original certificate and NEXUS 1.0.21 (22)."
+
+      - name: Upload signed Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: NEXUS-1.0.21-signed-release
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
