@@ -10,6 +10,7 @@ def nexusKeyAlias = System.getenv('NEXUS_KEY_ALIAS')
 def nexusKeyPassword = System.getenv('NEXUS_KEY_PASSWORD')
 def nexusSigningEnabled = nexusKeystorePath && nexusKeystorePassword && nexusKeyAlias && nexusKeyPassword
 
+// NEXUS 1.0.22: Android in-place upgrade over 1.0.20.
 android {
     namespace 'com.nexus.app'
     compileSdk 36
