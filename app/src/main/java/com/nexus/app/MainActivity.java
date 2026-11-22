@@ -23,7 +23,6 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.Plugin;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.InputStream;
@@ -45,6 +44,7 @@ public class MainActivity extends BridgeActivity {
         // Set the launch window background before Capacitor creates its WebView.
         configureLaunchWindow();
         registerPlugin(NativeSplashPlugin.class);
+        registerPlugin(NetworkFoundationPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Re-apply icon appearance after the framework has initialized the window.
@@ -186,7 +186,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @CapacitorPlugin(name = "NativeSplash")
-    public static class NativeSplashPlugin extends Plugin {
+    public static class NativeSplashPlugin extends com.getcapacitor.Plugin {
         @Override
         public void load() {
             bridge.getWebView().addJavascriptInterface(this, "NexusNativeSplash");
