@@ -240,6 +240,29 @@ begin
 end;
 $$;
 
+-- Use the database clock for expiry decisions; the client device clock is
+-- not authoritative and can be changed by the user.
+create or replace function public.nexus_get_current_subscription()
+returns table (
+  subscription_id uuid,
+  plan_name text,
+  ends_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select s.id, p.name, s.ends_at
+  from public.subscriptions as s
+  join public.plans as p on p.id = s.plan_id
+  where s.user_id = auth.uid()
+    and s.status = 'active'
+    and s.ends_at > now()
+  order by s.ends_at desc
+  limit 1;
+$;
+
 -- Retire the older grant function: it could create subscriptions without a
 -- reviewed order and therefore bypass the atomic workflow.
 revoke all on function public.nexus_grant_subscription(uuid, uuid)
@@ -253,6 +276,11 @@ grant execute on function public.nexus_is_admin()
 revoke all on function public.nexus_create_order(uuid)
   from public, anon;
 grant execute on function public.nexus_create_order(uuid)
+  to authenticated;
+
+revoke all on function public.nexus_get_current_subscription()
+  from public, anon;
+grant execute on function public.nexus_get_current_subscription()
   to authenticated;
 
 revoke all on function public.nexus_review_order(uuid, text, text)
