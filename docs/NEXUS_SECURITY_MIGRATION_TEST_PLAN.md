@@ -7,7 +7,8 @@
 ## 1. 执行前确认
 
 - [ ] 在 Supabase 控制台确认当前项目正确，避免误操作其他项目。
-- [ ] 在 SQL Editor 检查 `profiles`、`plans`、`orders`、`subscriptions`、`admin_users` 是否存在。
+- [ ] 先运行 `sql/00_nexus_cloud_baseline_check.sql`；它是只读检查，不会修改数据库。
+- [ ] 保存查询结果，并检查 `profiles`、`plans`、`orders`、`subscriptions`、`admin_users` 是否存在。
 - [ ] 对照 `sql/01_nexus_schema.sql` 核对列名、类型、约束和现有 RLS policy。
 - [ ] 确认 `orders.plan_id` 能关联到 `plans.id`，且历史订单对应的套餐记录仍存在。
 - [ ] 备份测试项目；不要在本阶段导入真实用户或真实订单。
