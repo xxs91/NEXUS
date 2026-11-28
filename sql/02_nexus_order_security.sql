@@ -258,6 +258,7 @@ as $
   join public.plans as p on p.id = s.plan_id
   where s.user_id = auth.uid()
     and s.status = 'active'
+    and s.starts_at <= now()
     and s.ends_at > now()
   order by s.ends_at desc
   limit 1;
