@@ -27,6 +27,7 @@ order by table_name, ordinal_position;
 select
   to_regprocedure('public.nexus_create_order(uuid)') as create_order_function,
   to_regprocedure('public.nexus_review_order(uuid,text,text)') as review_order_function,
+  to_regprocedure('public.nexus_get_current_subscription()') as current_subscription_function,
   to_regprocedure('public.nexus_grant_subscription(uuid,uuid)') as legacy_grant_function;
 
 select
@@ -47,7 +48,7 @@ select
 - `orders` 有 `order_no`、`plan_name_snapshot`、`duration_days_snapshot`、`reviewed_by`、`reviewed_at`、`admin_note`。
 - `subscriptions` 有 `source_order_id`、`granted_by`。
 - `admin_audit_logs` 表存在并启用 RLS。
-- 两个新 RPC 均存在；旧的 `nexus_grant_subscription(uuid,uuid)` 不再允许 authenticated 执行。
+- `nexus_create_order`、`nexus_review_order`、`nexus_get_current_subscription` 三个新 RPC 均存在；旧的 `nexus_grant_subscription(uuid,uuid)` 不再允许 authenticated 执行。
 - `can_update_display_name = true`；`can_update_account_status = false`。
 - `can_insert_orders_directly = false`、`can_update_orders_directly = false`、`can_insert_subscriptions_directly = false`。
 
@@ -79,6 +80,7 @@ select
 
 - [ ] 在测试环境为测试用户准备一条 `ends_at` 已早于当前时间的订阅。
 - [ ] 客户端不再把该订阅显示为有效。
+- [ ] `nexus_get_current_subscription()` 使用数据库的 `now()` 判断期限；改变测试设备的系统时间不会改变服务端返回结果。
 - [ ] 尚未接入支付时，页面仍只显示“订单申请/待审核”，不得显示“已付款”。
 
 ## 4. 当前限制
