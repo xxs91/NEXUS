@@ -2,6 +2,8 @@
 -- Apply ONLY after confirming that sql/01_nexus_schema.sql is the deployed baseline
 -- and after taking a database backup. Test on a staging project first.
 -- This migration does not enable payments or any network-access functionality.
+-- It is paired with the updated client in the same PR. Coordinate rollout:
+-- older clients that write directly to orders will stop working after this migration.
 
 begin;
 
